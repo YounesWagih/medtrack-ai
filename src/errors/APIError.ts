@@ -3,7 +3,7 @@ import { env } from "../config/env.js";
 export class APIError extends Error {
     public readonly statusCode: number;
     public readonly isOperational: boolean;
-    constructor(message: string, statusCode: number) {
+    constructor(message: string, statusCode: number = 500) {
         super(message);
         this.statusCode = statusCode;
         this.isOperational = true;
