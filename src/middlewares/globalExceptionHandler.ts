@@ -15,6 +15,7 @@ export const globalExceptionHandler = (
             .json(ResponseHelper.error(err.message));
     }
     if (err instanceof ZodError) {
+        console.log(err);
         return res
             .status(400)
             .json(
