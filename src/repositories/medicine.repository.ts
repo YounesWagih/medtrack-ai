@@ -116,8 +116,8 @@ export async function updateForUser(
     });
 }
 
-export async function markRemoved(id: string, userId: string) {
-    return prisma.medicine.update({
+export async function markRemoved(id: string, userId: string) {  
+  return prisma.medicine.update({
         where: { id, userId },
         data: { status: MedicineStatus.REMOVED },
         select: MEDICINE_SELECT,
