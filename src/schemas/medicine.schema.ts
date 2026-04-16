@@ -48,7 +48,7 @@ export const SortSchema = z.object({
 
 export const ListMedicineQuerySchema = PaginationSchema.extend({
     ...ListMedicineFiltersSchema.shape,
-    ...SortSchema,
+    ...SortSchema.shape,
 });
 
 export type CreateMedicineInput = z.infer<typeof CreateMedicineSchema>;
