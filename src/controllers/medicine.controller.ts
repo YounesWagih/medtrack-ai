@@ -3,7 +3,15 @@ import { AuthenticatedRequest } from "../middlewares/authenticate.js";
 import * as medicineService from "../services/medicine.service.js";
 import { ResponseHelper } from "../utils/responseHelper.js";
 import { MedicineStatus } from "@prisma/client";
-import { ListMedicineQuery } from "../schemas/medicine.schema.js";
+import {
+    ListMedicineQuery,
+    ListMedicinesFilters,
+} from "../schemas/medicine.schema.js";
+
+type UpdateMedicineInput = {
+    name?: string;
+    expiryDate?: Date;
+};
 
 export const createMedicine = async (
     req: AuthenticatedRequest,
@@ -29,11 +37,14 @@ export const listMedicines = async (
     res: Response,
 ) => {
     const userId = req.user!.userId;
-    const { status, page, limit } = req.query as unknown as ListMedicineQuery;
+    const query = req.query as unknown as ListMedicineQuery;
+    const { page, limit, sortBy, sortOrder, ...filters } = query;
+
     const result = await medicineService.listMedicines(
         userId,
-        { status },
+        filters,
         { page, limit },
+        { sortBy, sortOrder },
     );
     return res
         .status(200)
@@ -60,7 +71,7 @@ export const updateMedicine = async (
 ) => {
     const userId = req.user!.userId;
     const id = req.params.id as string;
-    const updateInput: medicineService.UpdateMedicineInput = {};
+    const updateInput: UpdateMedicineInput = {};
     if (req.body.name) updateInput.name = req.body.name;
     if (req.body.expiryDate)
         updateInput.expiryDate = new Date(req.body.expiryDate);

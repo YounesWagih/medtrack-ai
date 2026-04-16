@@ -9,13 +9,14 @@ export const globalExceptionHandler = (
     res: Response,
     _next: NextFunction,
 ) => {
+    console.log(err);
+
     if (err instanceof APIError) {
         return res
             .status(err.statusCode)
             .json(ResponseHelper.error(err.message));
     }
     if (err instanceof ZodError) {
-        console.log(err);
         return res
             .status(400)
             .json(

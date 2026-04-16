@@ -3,19 +3,27 @@ import { APIError } from "../errors/APIError.js";
 import * as medicineRepo from "../repositories/medicine.repository.js";
 import { computeStatus } from "./expiry.service.js";
 import { PaginationInput } from "../schemas/common.schema.js";
+import { CreateMedicineInput, SortBySchema } from "../schemas/medicine.schema.js";
+import { SortOrderSchema } from "../schemas/common.schema.js";
+import { PaginatedResponse } from "../types/index.js";
 
-export type CreateMedicineInput = {
-  name: string;
-  expiryDate: Date;
+type ListMedicinesFilters = {
+    status?: MedicineStatus;
+    search?: string;
 };
 
-export type UpdateMedicineInput = {
-  name?: string;
-  expiryDate?: Date;
+type ListMedicinesSort = {
+    sortBy: typeof SortBySchema._output;
+    sortOrder: typeof SortOrderSchema._output;
 };
 
-export type ListMedicinesFilters = {
-  status?: MedicineStatus;
+type MedicineListItem = Awaited<ReturnType<typeof medicineRepo.findManyByUser>>[number];
+
+export type ListMedicinesResult = PaginatedResponse<MedicineListItem>;
+
+type UpdateMedicineInput = {
+    name?: string;
+    expiryDate?: Date;
 };
 
 export async function createMedicine(userId: string, input: CreateMedicineInput) {
@@ -23,12 +31,25 @@ export async function createMedicine(userId: string, input: CreateMedicineInput)
   return medicineRepo.create(userId, { ...input, status });
 }
 
-export async function listMedicines(userId: string, filters: ListMedicinesFilters, pagination: PaginationInput) {
+export async function listMedicines(
+  userId: string,
+  filters: ListMedicinesFilters,
+  pagination: PaginationInput,
+  sort: ListMedicinesSort,
+): Promise<ListMedicinesResult> {
   const [items, total] = await Promise.all([
-    medicineRepo.findManyByUser(userId, { filters, page: pagination.page, limit: pagination.limit }),
+    medicineRepo.findManyByUser(userId, { filters, page: pagination.page, limit: pagination.limit, sort }),
     medicineRepo.countByUser(userId, filters),
   ]);
-  return { items, total, page: pagination.page, limit: pagination.limit };
+  const totalPages = Math.ceil(total / pagination.limit);
+  return {
+    items,
+    total,
+    page: pagination.page,
+    limit: pagination.limit,
+    hasMore: pagination.page < totalPages,
+    totalPages,
+  };
 }
 
 export async function getMedicineById(userId: string, medicineId: string) {
@@ -45,7 +66,7 @@ export async function updateMedicine(userId: string, medicineId: string, input: 
     throw new APIError(`Medicine with ID ${medicineId} not found`, 404);
   }
 
-  const updatePayload: medicineRepo.MedicineUpdateInput = {};
+  const updatePayload: UpdateMedicineInput = {};
   if (input.name) updatePayload.name = input.name;
   if (input.expiryDate) updatePayload.expiryDate = input.expiryDate;
 

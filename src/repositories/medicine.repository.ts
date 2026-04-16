@@ -1,25 +1,33 @@
 import { prisma } from "../db/PrismaClient.js";
 import { MedicineStatus, Prisma } from "@prisma/client";
-import { ListMedicineQuery } from "../schemas/medicine.schema.js";
+import { SortBySchema } from "../schemas/medicine.schema.js";
+import { SortOrderSchema } from "../schemas/common.schema.js";
 
-export type MedicineCreateInput = {
+type MedicineCreateInput = {
     name: string;
     expiryDate: Date;
 };
 
-export type MedicineUpdateInput = {
+type MedicineUpdateInput = {
     name?: string;
     expiryDate?: Date;
 };
 
 export type MedicineListFilters = {
     status?: MedicineStatus;
+    search?: string;
+};
+
+export type SortOptions = {
+    sortBy: typeof SortBySchema._output;
+    sortOrder: typeof SortOrderSchema._output;
 };
 
 export type ListParams = {
     filters: MedicineListFilters;
     page: number;
     limit: number;
+    sort: SortOptions;
 };
 
 const MEDICINE_SELECT = {
@@ -44,6 +52,12 @@ const buildWhereClause = (
             not: MedicineStatus.REMOVED,
         };
     }
+    if (filters.search) {
+        where.name = {
+            contains: filters.search,
+            mode: "insensitive",
+        };
+    }
     return where;
 };
 
@@ -61,7 +75,7 @@ export async function create(
 }
 
 export async function findManyByUser(userId: string, params: ListParams) {
-    const { filters, page, limit } = params;
+    const { filters, page, limit, sort } = params;
 
     const where = buildWhereClause(userId, filters);
 
@@ -70,7 +84,7 @@ export async function findManyByUser(userId: string, params: ListParams) {
         select: MEDICINE_SELECT,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: { [sort.sortBy]: sort.sortOrder },
     });
 }
 
