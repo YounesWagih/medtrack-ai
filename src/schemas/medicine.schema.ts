@@ -41,17 +41,19 @@ export const SortBySchema = z
     .enum(["name", "expiryDate", "createdAt"])
     .default("createdAt");
 
-export const ListMedicineQuerySchema = PaginationSchema.extend({
-    ...ListMedicineFiltersSchema.shape,
+export const SortSchema = z.object({
     sortBy: SortBySchema,
     sortOrder: SortOrderSchema,
 });
 
-export const RemoveMedicineSchema = z.object({});
+export const ListMedicineQuerySchema = PaginationSchema.extend({
+    ...ListMedicineFiltersSchema.shape,
+    ...SortSchema,
+});
 
 export type CreateMedicineInput = z.infer<typeof CreateMedicineSchema>;
 export type UpdateMedicineInput = z.infer<typeof UpdateMedicineSchema>;
 export type MedicineIdParam = z.infer<typeof MedicineIdParamSchema>;
 export type ListMedicineQuery = z.infer<typeof ListMedicineQuerySchema>;
-export type RemoveMedicineInput = z.infer<typeof RemoveMedicineSchema>;
 export type ListMedicinesFilters = z.infer<typeof ListMedicineFiltersSchema>;
+export type ListMedicinesSort = z.infer<typeof SortSchema>;

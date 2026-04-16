@@ -96,6 +96,7 @@ export async function countByUser(
     return prisma.medicine.count({ where });
 }
 
+//FIXME: user can search on removed medicines!!
 export async function findByIdForUser(id: string, userId: string) {
     return prisma.medicine.findFirst({
         where: { id, userId },

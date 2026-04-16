@@ -1,11 +1,16 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/authenticate.js";
+import {
+    AuthenticatedAndValidatedRequest,
+    ValidatedData,
+} from "../middlewares/validate.js";
 import * as medicineService from "../services/medicine.service.js";
 import { ResponseHelper } from "../utils/responseHelper.js";
 import { MedicineStatus } from "@prisma/client";
 import {
     ListMedicineQuery,
     ListMedicinesFilters,
+    MedicineIdParam,
 } from "../schemas/medicine.schema.js";
 
 type UpdateMedicineInput = {
@@ -33,13 +38,12 @@ export const createMedicine = async (
 };
 
 export const listMedicines = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedAndValidatedRequest,
     res: Response,
 ) => {
     const userId = req.user!.userId;
-    const query = req.query as unknown as ListMedicineQuery;
+    const query = req.validated?.query as ListMedicineQuery;
     const { page, limit, sortBy, sortOrder, ...filters } = query;
-
     const result = await medicineService.listMedicines(
         userId,
         filters,
@@ -52,11 +56,11 @@ export const listMedicines = async (
 };
 
 export const getMedicineById = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedAndValidatedRequest,
     res: Response,
 ) => {
     const userId = req.user!.userId;
-    const id = req.params.id as string;
+    const { id } = req.validated?.params as MedicineIdParam;
     const medicine = await medicineService.getMedicineById(userId, id);
     return res
         .status(200)
@@ -66,16 +70,12 @@ export const getMedicineById = async (
 };
 
 export const updateMedicine = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedAndValidatedRequest,
     res: Response,
 ) => {
     const userId = req.user!.userId;
-    const id = req.params.id as string;
-    const updateInput: UpdateMedicineInput = {};
-    if (req.body.name) updateInput.name = req.body.name;
-    if (req.body.expiryDate)
-        updateInput.expiryDate = new Date(req.body.expiryDate);
-
+    const { id } = req.validated?.params as MedicineIdParam;
+    const updateInput = req.validated?.body as UpdateMedicineInput;
     const updated = await medicineService.updateMedicine(
         userId,
         id,
@@ -87,11 +87,11 @@ export const updateMedicine = async (
 };
 
 export const removeMedicine = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedAndValidatedRequest,
     res: Response,
 ) => {
     const userId = req.user!.userId;
-    const id = req.params.id as string;
+    const { id } = req.validated?.params as MedicineIdParam;
     await medicineService.removeMedicine(userId, id);
     return res
         .status(200)
