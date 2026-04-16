@@ -65,7 +65,7 @@ export async function create(
     userId: string,
     data: MedicineCreateInput & { status: MedicineStatus },
 ) {
-    return prisma.medicine.create({
+    return await prisma.medicine.create({
         data: {
             ...data,
             userId,

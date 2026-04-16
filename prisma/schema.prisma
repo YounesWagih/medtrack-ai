@@ -52,6 +52,9 @@ model Medicine {
   status     MedicineStatus
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, expiryDate])
 }
 
 model ChatSession {

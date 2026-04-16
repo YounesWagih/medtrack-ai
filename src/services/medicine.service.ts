@@ -24,7 +24,7 @@ export async function createMedicine(
     input: CreateMedicineInput,
 ) {
     const status = computeStatus(input.expiryDate);
-    return medicineRepo.create(userId, { ...input, status });
+    return await medicineRepo.create(userId, { ...input, status });
 }
 
 export async function listMedicines(
@@ -76,7 +76,7 @@ export async function updateMedicine(
         if (updatePayload.expiryDate) {
             const newStatus = computeStatus(updatePayload.expiryDate);
             if (newStatus !== updated.status) {
-                return medicineRepo.updateStatus(medicineId, newStatus);
+                return await medicineRepo.updateStatus(medicineId, newStatus);
             }
         }
         return updated;
@@ -88,7 +88,7 @@ export async function updateMedicine(
 
 export async function removeMedicine(userId: string, medicineId: string) {
     try {
-        return medicineRepo.markRemoved(medicineId, userId);
+        return await medicineRepo.markRemoved(medicineId, userId);
     } catch (err: any) {
         if (err.code === "P2025")
             throw new APIError(`Medicine with ID ${medicineId} Not Found`, 404);
