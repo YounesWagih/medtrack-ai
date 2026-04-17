@@ -1,7 +1,11 @@
 import { MedicineStatus } from "@prisma/client";
 import { APIError } from "../errors/APIError.js";
 import * as medicineRepo from "../repositories/medicine.repository.js";
-import { computeStatus } from "./expiry.service.js";
+import {
+    computeStatus,
+    getEndOfDay,
+    getExpiringSoonThresholdDays,
+} from "./expiry.service.js";
 import { PaginationInput } from "../schemas/common.schema.js";
 import {
     CreateMedicineInput,
@@ -96,8 +100,9 @@ export async function removeMedicine(userId: string, medicineId: string) {
 }
 
 export async function syncMedicineStatuses() {
-    const referenceDate = new Date();
-    referenceDate.setHours(23, 59, 59, 999);
+    const threshold = getExpiringSoonThresholdDays();
+    const referenceDate = getEndOfDay(new Date());
+    referenceDate.setDate(referenceDate.getDate() + threshold);
 
     const candidates =
         await medicineRepo.findCandidatesForStatusSync(referenceDate);

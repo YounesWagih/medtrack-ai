@@ -3,7 +3,7 @@ import { env } from "../config/env.js";
 
 const DEFAULT_EXPIRING_SOON_DAYS = 30;
 
-function getExpiringSoonThresholdDays(): number {
+export function getExpiringSoonThresholdDays(): number {
   const threshold = parseInt(process.env.MEDICINE_EXPIRING_SOON_DAYS || "", 10);
   return isNaN(threshold) ? DEFAULT_EXPIRING_SOON_DAYS : threshold;
 }
@@ -14,7 +14,7 @@ function getStartOfDay(date: Date): Date {
   return d;
 }
 
-function getEndOfDay(date: Date): Date {
+export function getEndOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
   return d;

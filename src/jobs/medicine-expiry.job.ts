@@ -3,7 +3,8 @@ import * as medicineService from "../services/medicine.service.js";
 import { sendExpiryNotification } from "../services/notification.service.js";
 import { MedicineStatus } from "@prisma/client";
 
-const DEFAULT_CRON = "0 0 * * *";
+// const DEFAULT_CRON = "0 0 * * *";
+const DEFAULT_CRON = "*/1 * * * *";
 const DEFAULT_TIMEZONE = "UTC";
 
 function getCronExpression(): string {
