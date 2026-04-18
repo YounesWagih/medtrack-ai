@@ -65,6 +65,8 @@ model ChatSession {
   status    ChatSessionStatus
   createdAt DateTime          @default(now())
   messages  ChatMessage[]
+
+  @@index([userId, createdAt])
 }
 
 model ChatMessage {
@@ -74,4 +76,6 @@ model ChatMessage {
   role      ChatMessageRole
   content   String
   createdAt DateTime        @default(now())
+
+  @@index([sessionId, createdAt])
 }
