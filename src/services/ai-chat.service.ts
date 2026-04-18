@@ -27,6 +27,14 @@ export async function sendMessage(
 ) {
     //NOTE: we already sanitize usermessage in the sanitize middleware
 
+    /*1 query approach?
+        -current approach 2 queries:
+            findSessionById (existance, authority)
+            addMessage
+        -1 query approach
+            make addMessage check on authority by make it session:{connect: {sessionId, userId }}
+            but this require to make userId unique in ChatSession table which we should put unqiue key on (userId)
+    */
     const session = await chatRepo.findSessionById(sessionId, userId);
     if (!session) {
         throw new APIError("Chat session not found", 404);
@@ -38,7 +46,7 @@ export async function sendMessage(
     const history = await chatRepo.findMessagesBySession(sessionId);
 
     const medicines = await medicineRepo.findManyByUser(userId, {
-        filters: { status: MedicineStatus.REMOVED },
+        filters: {},
         page: 1,
         limit: 50,
         sort: { sortBy: "name", sortOrder: "asc" },

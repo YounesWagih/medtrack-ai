@@ -15,10 +15,10 @@ const envSchema = z.object({
         .min(32, "JWT_SECRET must be at least 32 characters long"),
     JWT_EXPIRES_IN: z.string().default("7d"),
     GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
-    GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
+    GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
     GEMINI_MAX_TOKENS: z.string().default("8192"),
     GEMINI_TEMPERATURE: z.string().default("0.7"),
-    CHAT_RATE_LIMIT: z.string().default("50"),
+    CHAT_RATE_LIMIT: z.string().default("50"),  
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
