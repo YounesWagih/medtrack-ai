@@ -55,3 +55,14 @@ export const getMessages = async (
         .status(200)
         .json(ResponseHelper.success("Messages fetched", result));
 };
+
+export const getSessions = async (
+    req: AuthenticatedRequest,
+    res: Response,
+) => {
+    const userId = req.user!.userId;
+    const sessions = await aiChatService.getAllSessions(userId);
+    return res
+        .status(200)
+        .json(ResponseHelper.success("Sessions fetched", sessions));
+};

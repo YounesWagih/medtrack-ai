@@ -1,5 +1,5 @@
 import apiService from '@/services/api';
-import type { ChatSession, ChatMessage, SendMessageDto } from '@/types/api';
+import type { ChatSession, ChatMessage, SendMessageDto, ChatMessageResponse } from '@/types/api';
 
 export const chatService = {
   // Create a new chat session
@@ -7,18 +7,18 @@ export const chatService = {
     return apiService.post('/chat/sessions');
   },
 
-  // Get all sessions for current user (optional endpoint, if backend supports)
+  // Get all sessions for current user
   async listSessions(): Promise<ChatSession[]> {
     return apiService.get('/chat/sessions');
   },
 
   // Get messages for a session
-  async getMessages(sessionId: string): Promise<ChatMessage[]> {
+  async getMessages(sessionId: string): Promise<{ sessionId: string; messages: ChatMessage[] }> {
     return apiService.get(`/chat/sessions/${sessionId}/messages`);
   },
 
   // Send a message to a session
-  async sendMessage(sessionId: string, content: string): Promise<ChatMessage> {
+  async sendMessage(sessionId: string, content: string): Promise<ChatMessageResponse> {
     return apiService.post(`/chat/sessions/${sessionId}/messages`, { content } as SendMessageDto);
   },
 

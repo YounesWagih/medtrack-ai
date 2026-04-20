@@ -52,10 +52,11 @@ export function useMedicines(params?: ListMedicineQuery) {
   });
 
   return {
-    medicines: data?.data || [],
+    medicines: data?.items || [],
     total: data?.total || 0,
     page: data?.page || 1,
     totalPages: data?.totalPages || 1,
+    hasMore: data?.hasMore || false,
     isLoading,
     error,
     refetch,

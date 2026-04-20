@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import type { ApiResponse, User } from '@/types/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 class ApiService {
   private client: AxiosInstance;
@@ -74,10 +74,10 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  private handleResponse<T>(response: AxiosResponse<ApiResponse<T>>): T {
-    const { data, error } = response.data;
-    if (error) {
-      throw new Error(error);
+  private handleResponse<T>(response: AxiosResponse<{ success: boolean; message: string; data?: T; error?: string }>): T {
+    const { success, message, data, error } = response.data;
+    if (!success || error) {
+      throw new Error(error || message || 'Unknown error');
     }
     return data as T;
   }
@@ -94,6 +94,11 @@ class ApiService {
   async register(data: { name: string; email: string; password: string }): Promise<{ user: User; token: string }> {
     const response = await this.post<{ user: User; token: string }>('/auth/register', data);
     return response;
+  }
+
+  async getCurrentUser(): Promise<User> {
+    const response = await this.get<{ user: User }>('/users/me');
+    return response.user;
   }
 
   logout(): void {

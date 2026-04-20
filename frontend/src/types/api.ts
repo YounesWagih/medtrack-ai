@@ -58,10 +58,11 @@ export interface ListMedicineQuery {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
+  items: T[];
   total: number;
   page: number;
   limit: number;
+  hasMore: boolean;
   totalPages: number;
 }
 
@@ -90,11 +91,31 @@ export interface SendMessageDto {
   content: string;
 }
 
+export interface ChatRecommendationMedicine {
+  name: string;
+  recommendation: string;
+  dosage: string;
+  frequency: string;
+}
+
+export interface ChatResponseData {
+  type: 'recommendation' | 'text';
+  content: string;
+  medicines?: ChatRecommendationMedicine[];
+  extractedMedicineNames: string[];
+}
+
+export interface ChatMessageResponse {
+  sessionId: string;
+  response: ChatResponseData;
+}
+
 // API response wrapper
 export interface ApiResponse<T = unknown> {
+  success: boolean;
+  message: string;
   data?: T;
   error?: string;
-  message?: string;
 }
 
 // Pagination query params (shared)

@@ -48,12 +48,12 @@ export async function listMedicines(
     ]);
     const totalPages = Math.ceil(total / pagination.limit);
     return {
+        items,
         total,
         page: pagination.page,
         limit: pagination.limit,
         hasMore: pagination.page < totalPages,
         totalPages,
-        items,
     };
 }
 

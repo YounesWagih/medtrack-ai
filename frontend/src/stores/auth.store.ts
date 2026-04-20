@@ -13,6 +13,7 @@ interface AuthState {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => boolean;
+  fetchCurrentUser: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -58,18 +59,21 @@ export const useAuthStore = create<AuthState>()(
 
       checkAuth: () => {
         const token = localStorage.getItem('token');
-        const userStr = localStorage.getItem('user');
-        if (token && userStr) {
-          try {
-            const user = JSON.parse(userStr) as User;
-            set({ token, user, isAuthenticated: true });
-            return true;
-          } catch {
-            get().logout();
-            return false;
-          }
+        if (token) {
+          set({ token, isAuthenticated: true });
+          return true;
         }
         return false;
+      },
+
+      fetchCurrentUser: async () => {
+        try {
+          const user = await apiService.getCurrentUser();
+          set({ user });
+          localStorage.setItem('user', JSON.stringify(user));
+        } catch {
+          get().logout();
+        }
       },
     }),
     {

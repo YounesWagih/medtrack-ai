@@ -72,3 +72,11 @@ export async function findSessionWithMessages(sessionId: string, userId: string)
         },
     });
 }
+
+export async function findAllByUser(userId: string) {
+    return await prisma.chatSession.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        select: SESSION_SELECT,
+    });
+}

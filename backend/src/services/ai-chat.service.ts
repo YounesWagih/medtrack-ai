@@ -102,3 +102,7 @@ export async function getMessages(sessionId: string, userId: string) {
         messages: sessionWithMessages.messages,
     };
 }
+
+export async function getAllSessions(userId: string) {
+    return await chatRepo.findAllByUser(userId);
+}

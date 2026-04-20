@@ -22,8 +22,8 @@ export const medicineService = {
     return apiService.patch(`/medicines/${id}`, data);
   },
 
-  // Remove (soft delete) medicine
-  async remove(id: string): Promise<void> {
-    return apiService.patch(`/medicines/${id}/remove`);
+  // Remove (soft delete) medicine - returns null on success
+  async remove(id: string): Promise<null> {
+    return apiService.patch<null>(`/medicines/${id}/remove`);
   },
 };

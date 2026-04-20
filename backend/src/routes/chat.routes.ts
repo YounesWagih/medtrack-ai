@@ -36,4 +36,10 @@ router.get(
     chatController.getMessages,
 );
 
+router.get(
+    "/sessions",
+    authenticate,
+    chatController.getSessions,
+);
+
 export default router;
