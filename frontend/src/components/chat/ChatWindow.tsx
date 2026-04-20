@@ -14,7 +14,8 @@ interface ChatWindowProps {
 
 export function ChatWindow({ sessionId, onSendMessage, isLoading = false }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, sendMessage, isSending } = useChatMessages(sessionId || '');
+  const { messages: sessionData, sendMessage, isSending } = useChatMessages(sessionId || '');
+  const messages = Array.isArray(sessionData) ? sessionData : sessionData?.messages || [];
 
   useEffect(() => {
     if (scrollRef.current) {

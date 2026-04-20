@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { LoginPage } from '@/pages/Login';
 import { RegisterPage } from '@/pages/Register';
 import { DashboardPage } from '@/pages/Dashboard';
+import { MedicinesPage } from '@/pages/MedicinesPage';
 import { MedicineFormPage } from '@/pages/MedicineForm';
 import { ChatPage } from '@/pages/Chat';
 
@@ -30,6 +31,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/medicines"
+        element={
+          <ProtectedRoute>
+            <MedicinesPage />
           </ProtectedRoute>
         }
       />

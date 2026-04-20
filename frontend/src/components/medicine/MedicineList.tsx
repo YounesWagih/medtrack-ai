@@ -1,11 +1,17 @@
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MedicineStatusBadge } from './MedicineStatusBadge';
-import { Loader2, Pill } from 'lucide-react';
+import { Pill, MoreVertical } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import type { Medicine } from '@/types/api';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface MedicineCardProps {
   medicine: Medicine;
@@ -26,7 +32,30 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
             <Pill className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-lg leading-none">{medicine.name}</h3>
           </div>
-          <MedicineStatusBadge status={medicine.status} />
+          <div className="flex items-center gap-2">
+            <MedicineStatusBadge status={medicine.status} />
+            {!isRemoved && (onEdit || onDelete) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onEdit && (
+                    <DropdownMenuItem onClick={() => onEdit(medicine)}>
+                      Edit
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <DropdownMenuItem onClick={() => onDelete(medicine.id)}>
+                      Remove
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pb-2">
@@ -46,18 +75,6 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
           )}
         </div>
       </CardContent>
-      <CardFooter className="pt-2 flex justify-end gap-2">
-        {onEdit && !isRemoved && (
-          <Button variant="outline" size="sm" onClick={() => onEdit(medicine)}>
-            Edit
-          </Button>
-        )}
-        {onDelete && !isRemoved && (
-          <Button variant="destructive" size="sm" onClick={() => onDelete(medicine.id)}>
-            Remove
-          </Button>
-        )}
-      </CardFooter>
     </Card>
   );
 }

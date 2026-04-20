@@ -4,21 +4,18 @@ import { Sidebar } from './Sidebar';
 
 interface LayoutProps {
   children: ReactNode;
-  onAddMedicine?: () => void;
 }
 
-export function Layout({ children, onAddMedicine }: LayoutProps) {
+export function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-background">
+      <Sidebar />
       <Header />
-      <div className="flex">
-        <Sidebar onAddMedicine={onAddMedicine} />
-        <main className="flex-1 p-6 md:p-8 lg:p-10 ml-0 md:ml-0">
-          <div className="container mx-auto max-w-7xl">
-            {children}
-          </div>
-        </main>
-      </div>
+      <main className="ml-[240px] pt-16">
+        <div className="p-6">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

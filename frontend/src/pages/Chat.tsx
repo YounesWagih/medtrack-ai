@@ -25,24 +25,19 @@ export function ChatPage() {
   };
 
   const handleSendMessage = async (content: string) => {
-    // This will be handled by ChatWindow's internal hook, but we could add extra logic here
     return;
   };
 
   return (
     <Layout>
-      <div className="h-[calc(100vh-8rem)] flex border rounded-lg overflow-hidden">
-        {/* Sessions sidebar */}
-        <div className="w-64 hidden md:block">
-          <ChatSessionList
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={handleSelectSession}
-            onNewSession={handleNewSession}
-          />
-        </div>
+      <div className="h-[calc(100vh-8rem)] flex border border-border rounded-[12px] overflow-hidden bg-surface">
+        <ChatSessionList
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
+          onNewSession={handleNewSession}
+        />
 
-        {/* Main chat window */}
         <div className="flex-1">
           <ChatWindow
             sessionId={activeSessionId}

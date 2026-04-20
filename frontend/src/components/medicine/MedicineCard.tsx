@@ -53,7 +53,7 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
           </Button>
         )}
         {onDelete && !isRemoved && (
-          <Button variant="destructive" size="sm" onClick={() => onDelete(medicine.id)}>
+          <Button variant="danger" size="sm" onClick={() => onDelete(medicine.id)}>
             <Trash2 className="h-4 w-4 mr-1" />
             Remove
           </Button>
