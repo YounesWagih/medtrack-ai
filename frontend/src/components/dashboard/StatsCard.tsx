@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useCountUp } from '@/hooks/useCountUp';
 
 interface StatsCardProps {
   title: string;
@@ -7,37 +8,39 @@ interface StatsCardProps {
   color: 'green' | 'orange' | 'red';
 }
 
-export function StatsCard({ title, value, color }: StatsCardProps) {
-  const colorClasses = {
-    green: {
-      bg: 'bg-success/10',
-      text: 'text-success',
-      icon: 'bg-success/20',
-    },
-    orange: {
-      bg: 'bg-warning/10',
-      text: 'text-warning',
-      icon: 'bg-warning/20',
-    },
-    red: {
-      bg: 'bg-danger/10',
-      text: 'text-danger',
-      icon: 'bg-danger/20',
-    },
-  };
+const colorConfig = {
+  green: {
+    bg: 'bg-success/10',
+    text: 'text-success',
+  },
+  orange: {
+    bg: 'bg-warning/10',
+    text: 'text-warning',
+  },
+  red: {
+    bg: 'bg-danger/10',
+    text: 'text-danger',
+  },
+};
 
-  const colors = colorClasses[color];
+export function StatsCard({ title, value, color }: StatsCardProps) {
+  const config = colorConfig[color];
+  const animatedValue = useCountUp(value, 700);
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-textSecondary">{title}</p>
-          <p className={cn('text-3xl font-bold mt-1', colors.text)}>{value}</p>
+    <Card className="p-6">
+      <div className="flex flex-col items-center text-center space-y-4">
+        <div
+          className={cn(
+            'h-24 w-24 rounded-full flex items-center justify-center',
+            config.bg
+          )}
+        >
+          <span className={cn('text-4xl font-bold', config.text)}>
+            {animatedValue}
+          </span>
         </div>
-        <div className={cn('h-12 w-12 rounded-full flex items-center justify-center', colors.icon)}>
-          <span className={cn('text-xl font-bold', colors.text)}>{value}</span>
-        </div>
+        <p className="text-sm font-medium text-textSecondary">{title}</p>
       </div>
     </Card>
   );
