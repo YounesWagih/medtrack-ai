@@ -6,11 +6,17 @@ import { SortOrderSchema } from "../schemas/common.schema.js";
 type MedicineCreateInput = {
     name: string;
     expiryDate: Date;
+    description?: string;
+    longDescription?: string;
+    image?: string;
 };
 
 type MedicineUpdateInput = {
     name?: string;
     expiryDate?: Date;
+    description?: string;
+    longDescription?: string;
+    image?: string;
 };
 
 export type MedicineListFilters = {
@@ -36,6 +42,9 @@ const MEDICINE_SELECT = {
     name: true,
     expiryDate: true,
     status: true,
+    description: true,
+    longDescription: true,
+    image: true,
     createdAt: true,
     updatedAt: true,
 } as const;

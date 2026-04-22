@@ -28,7 +28,15 @@ export async function createMedicine(
     input: CreateMedicineInput,
 ) {
     const status = computeStatus(input.expiryDate);
-    return await medicineRepo.create(userId, { ...input, status });
+    const { description, longDescription, image } = input;
+    return await medicineRepo.create(userId, {
+        name: input.name,
+        expiryDate: input.expiryDate,
+        status,
+        description,
+        longDescription,
+        image,
+    });
 }
 
 export async function listMedicines(

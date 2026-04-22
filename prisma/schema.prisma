@@ -44,14 +44,17 @@ model User {
 }
 
 model Medicine {
-  id         String         @id @default(uuid())
-  userId     String
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  expiryDate DateTime
-  status     MedicineStatus
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  expiryDate      DateTime
+  status         MedicineStatus
+  description   String?
+  longDescription String?
+  image          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([userId, status]) //filter
   @@index([userId, expiryDate]) // sorting
