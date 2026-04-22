@@ -10,6 +10,7 @@ import { DashboardPage } from '@/pages/Dashboard';
 import { MedicinesPage } from '@/pages/MedicinesPage';
 import { MedicineFormPage } from '@/pages/MedicineForm';
 import { MedicineDetailsPage } from '@/pages/MedicineDetails';
+import { MedicineViewPage } from '@/pages/MedicineView';
 import { ChatPage } from '@/pages/Chat';
 
 function AuthInitializer() {
@@ -56,6 +57,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MedicineDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/medicines/view/:id"
+        element={
+          <ProtectedRoute>
+            <MedicineViewPage />
           </ProtectedRoute>
         }
       />

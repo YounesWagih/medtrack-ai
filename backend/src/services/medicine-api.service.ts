@@ -1,4 +1,5 @@
 import axios from "axios";
+import { convert } from "html-to-text";
 import {
     ExternalMedicineSearchResponse,
     ExternalMedicineDetailsResponse,
@@ -59,7 +60,7 @@ export async function getMedicineDetails(
             name_en: product.name_en,
             name_ar: product.name_ar,
             image: product.image,
-            description: product.description_ar,
+            description: convert(product.description_ar),
             longDescription: product.long_description_ar,
         };
     } catch (error) {

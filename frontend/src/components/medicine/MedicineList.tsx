@@ -26,15 +26,14 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
   const isExpired = medicine.status === 'EXPIRED';
   const isRemoved = medicine.status === 'REMOVED';
   const isExpiringSoon = medicine.status === 'EXPIRING_SOON';
+  const isActive = medicine.status === 'ACTIVE';
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent navigation if clicking on action buttons
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
-    // Create a URL-friendly slug from the medicine name
-    const slug = medicine.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    navigate(`/medicines/details/${slug}`);
+    navigate(`/medicines/view/${medicine.id}`);
   };
 
   const handleActionClick = (e: React.MouseEvent) => {
@@ -45,6 +44,7 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
     <Card
       className={cn(
         'relative cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] group',
+        isActive && 'border-green-200',
         isExpired && 'opacity-75 border-red-200',
         isRemoved && 'opacity-50 grayscale',
         isExpiringSoon && 'border-yellow-200'
@@ -57,7 +57,7 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
           <img
             src={medicine.image}
             alt={medicine.name}
-            className="w-full h-32 object-cover transition-transform duration-200 group-hover:scale-105"
+            className="w-full h-40 object-contain transition-transform duration-200 group-hover:scale-105"
           />
           <div className="absolute top-2 right-2">
             <MedicineStatusBadge status={medicine.status} />
@@ -153,7 +153,7 @@ export function MedicineList({ medicines, isLoading, onEdit, onDelete }: Medicin
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="h-64 w-full rounded-lg" />
+          <Skeleton key={i} className="h-72 w-full rounded-lg" />
         ))}
       </div>
     );
