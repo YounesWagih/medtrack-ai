@@ -46,6 +46,9 @@ export const medicineSchema = z.object({
   expiryDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid date',
   }),
+  description: z.string().optional(),
+  longDescription: z.string().optional(),
+  image: z.string().url({message: 'Invalid URL'}).optional().or(z.literal('')),
 });
 
 // Export inferred type

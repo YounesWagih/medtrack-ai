@@ -9,9 +9,9 @@
   --color-secondary: #10B981;
   --color-secondary-foreground: #ffffff;
   
-  /* Accent palette (purple) */
-  --color-accent: #8B5CF6;
-  --color-accent-foreground: #ffffff;
+   /* Accent palette (blue - aligned with primary identity) */
+   --color-accent: #2563EB;
+   --color-accent-foreground: #ffffff;
   
   /* Semantic colors - adjusted for better contrast with white text */
   --color-success: #059669;

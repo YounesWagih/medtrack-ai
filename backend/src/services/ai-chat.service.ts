@@ -106,3 +106,16 @@ export async function getMessages(sessionId: string, userId: string) {
 export async function getAllSessions(userId: string) {
     return await chatRepo.findAllByUser(userId);
 }
+
+export async function deleteSession(sessionId: string, userId: string) {
+    // Verify session exists and belongs to user
+    const session = await chatRepo.findSessionById(sessionId, userId);
+    if (!session) {
+        throw new APIError("Chat session not found", 404);
+    }
+
+    // Delete session (cascade will delete messages due to Prisma cascade config)
+    await chatRepo.deleteSession(sessionId, userId);
+
+    return { success: true };
+}

@@ -66,3 +66,16 @@ export const getSessions = async (
         .status(200)
         .json(ResponseHelper.success("Sessions fetched", sessions));
 };
+
+export const deleteSession = async (
+    req: AuthenticatedAndValidatedRequest,
+    res: Response,
+) => {
+    const userId = req.user!.userId;
+    const { id: sessionId } = req.validated?.params as SessionIdParam;
+
+    await aiChatService.deleteSession(sessionId, userId);
+    return res
+        .status(200)
+        .json(ResponseHelper.success("Session deleted successfully"));
+};

@@ -12,6 +12,11 @@ export const chatService = {
     return apiService.get('/chat/sessions');
   },
 
+  // Delete a chat session
+  async deleteSession(sessionId: string): Promise<void> {
+    return apiService.delete(`/chat/sessions/${sessionId}`);
+  },
+
   // Get messages for a session
   async getMessages(sessionId: string): Promise<{ sessionId: string; messages: ChatMessage[] }> {
     return apiService.get(`/chat/sessions/${sessionId}/messages`);

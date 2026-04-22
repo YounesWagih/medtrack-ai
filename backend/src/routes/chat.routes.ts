@@ -42,4 +42,11 @@ router.get(
     chatController.getSessions,
 );
 
+router.delete(
+    "/sessions/:id",
+    authenticate,
+    validate(SessionIdParamSchema, "params"),
+    chatController.deleteSession,
+);
+
 export default router;

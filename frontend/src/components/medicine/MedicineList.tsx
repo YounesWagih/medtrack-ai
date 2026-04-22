@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MedicineStatusBadge } from './MedicineStatusBadge';
-import { Pill, MoreVertical } from 'lucide-react';
+import { Pill, MoreVertical, Calendar, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import type { Medicine } from '@/types/api';
@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useNavigate } from 'react-router-dom';
 
 interface MedicineCardProps {
   medicine: Medicine;
@@ -20,24 +21,78 @@ interface MedicineCardProps {
 }
 
 export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) {
+  const navigate = useNavigate();
   const expiryDate = new Date(medicine.expiryDate);
   const isExpired = medicine.status === 'EXPIRED';
   const isRemoved = medicine.status === 'REMOVED';
+  const isExpiringSoon = medicine.status === 'EXPIRING_SOON';
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent navigation if clicking on action buttons
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    // Create a URL-friendly slug from the medicine name
+    const slug = medicine.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    navigate(`/medicines/details/${slug}`);
+  };
+
+  const handleActionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
 
   return (
-    <Card className={cn('relative', isExpired && 'opacity-75', isRemoved && 'opacity-50 grayscale')}>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <Pill className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold text-lg leading-none">{medicine.name}</h3>
-          </div>
-          <div className="flex items-center gap-2">
+    <Card
+      className={cn(
+        'relative cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] group',
+        isExpired && 'opacity-75 border-red-200',
+        isRemoved && 'opacity-50 grayscale',
+        isExpiringSoon && 'border-yellow-200'
+      )}
+      onClick={handleCardClick}
+    >
+      {/* Medicine Image */}
+      {medicine.image && (
+        <div className="relative overflow-hidden rounded-t-lg bg-gray-50">
+          <img
+            src={medicine.image}
+            alt={medicine.name}
+            className="w-full h-32 object-cover transition-transform duration-200 group-hover:scale-105"
+          />
+          <div className="absolute top-2 right-2">
             <MedicineStatusBadge status={medicine.status} />
-            {!isRemoved && (onEdit || onDelete) && (
+          </div>
+        </div>
+      )}
+
+      <CardHeader className={cn('pb-2', !medicine.image && 'pt-4')}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="p-2 bg-primary/10 rounded-full shrink-0">
+              <Pill className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
+                {medicine.name}
+              </h3>
+              {medicine.description && (
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  {medicine.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Action Menu */}
+          {!isRemoved && (onEdit || onDelete) && (
+            <div onClick={handleActionClick}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -48,30 +103,37 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
                     </DropdownMenuItem>
                   )}
                   {onDelete && (
-                    <DropdownMenuItem onClick={() => onDelete(medicine.id)}>
+                    <DropdownMenuItem
+                      className="text-red-600 hover:bg-red-600 hover:text-white focus:bg-red-600 focus:text-white"
+                      onClick={() => onDelete(medicine.id)}
+                    >
                       Remove
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="pb-2">
-        <div className="space-y-1 text-sm text-muted-foreground">
-          <p>
-            <span className="font-medium">Expiry:</span>{' '}
-            {expiryDate.toLocaleDateString()}
-            {' ('}
-            {formatDistanceToNow(expiryDate, { addSuffix: true })}
-            {')'}
-          </p>
+
+      <CardContent className="pt-0">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span className={cn(
+              'font-medium',
+              isExpired && 'text-red-600',
+              isExpiringSoon && 'text-yellow-600'
+            )}>
+              {formatDistanceToNow(expiryDate, { addSuffix: true })}
+            </span>
+          </div>
           {medicine.createdAt && (
-            <p>
-              <span className="font-medium">Added:</span>{' '}
-              {new Date(medicine.createdAt).toLocaleDateString()}
-            </p>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>{new Date(medicine.createdAt).toLocaleDateString()}</span>
+            </div>
           )}
         </div>
       </CardContent>
@@ -89,9 +151,9 @@ interface MedicineListProps {
 export function MedicineList({ medicines, isLoading, onEdit, onDelete }: MedicineListProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="h-40 w-full" />
+          <Skeleton key={i} className="h-64 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -108,7 +170,7 @@ export function MedicineList({ medicines, isLoading, onEdit, onDelete }: Medicin
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {medicines.map((medicine) => (
         <MedicineCard
           key={medicine.id}

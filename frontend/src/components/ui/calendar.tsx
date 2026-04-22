@@ -1,17 +1,17 @@
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
-import { vi } from "react-day-picker/locale"
+import { enUS } from "react-day-picker/locale"
 import "react-day-picker/style.css"
 
 import { cn } from "@/lib/utils"
 
 function Calendar({
   className,
-  showOutsideDays = true,
-  locale = vi,
+  showOutsideDays = false,
+  locale = enUS,
   ...props
-}: React.ComponentProps<typeof DayPicker> & { locale?: typeof vi }) {
+}: React.ComponentProps<typeof DayPicker> & { locale?: typeof enUS }) {
   return (
     <div className={cn("w-full max-w-[280px] bg-white rounded-[12px] p-3 border border-border", className)} role="application" aria-label="Calendar">
       <DayPicker

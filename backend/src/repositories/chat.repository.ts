@@ -80,3 +80,9 @@ export async function findAllByUser(userId: string) {
         select: SESSION_SELECT,
     });
 }
+
+export async function deleteSession(sessionId: string, userId: string) {
+    return await prisma.chatSession.deleteMany({
+        where: { id: sessionId, userId },
+    });
+}

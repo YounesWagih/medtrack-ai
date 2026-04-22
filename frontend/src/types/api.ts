@@ -37,6 +37,9 @@ export interface Medicine {
   name: string;
   expiryDate: string; // ISO date string
   status: MedicineStatus;
+  description?: string;
+  longDescription?: string;
+  image?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +47,25 @@ export interface Medicine {
 export interface CreateMedicineDto {
   name: string;
   expiryDate: string;
+  description?: string;
+  longDescription?: string;
+  image?: string;
+}
+
+// External API types (from medicine search service)
+export interface ExternalMedicineSearchItem {
+  name_ar: string;
+  name_en: string;
+  slug: string;
+  image: string;
+}
+
+export interface ExternalMedicineDetails {
+  name_en: string;
+  name_ar: string;
+  image: string;
+  description: string;
+  longDescription: string;
 }
 
 export interface UpdateMedicineDto extends CreateMedicineDto {}

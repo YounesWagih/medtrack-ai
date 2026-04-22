@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 export function useCountUp(end: number, duration: number = 1500, start: number = 0) {
   const [count, setCount] = useState(start);
-  const requestRef = useRef<number>();
-  const startTimeRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
+  const startTimeRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const animate = (time: number) => {

@@ -8,6 +8,7 @@ import * as medicineService from "../services/medicine.service.js";
 import { ResponseHelper } from "../utils/responseHelper.js";
 import { MedicineStatus } from "@prisma/client";
 import {
+    CreateMedicineInput,
     ListMedicineQuery,
     ListMedicinesFilters,
     MedicineIdParam,
@@ -19,13 +20,17 @@ type UpdateMedicineInput = {
 };
 
 export const createMedicine = async (
-    req: AuthenticatedRequest,
+    req: AuthenticatedAndValidatedRequest,
     res: Response,
 ) => {
     const userId = req.user!.userId;
+    const { name, expiryDate, description, longDescription, image } = req.validated?.body as CreateMedicineInput;
     const newMedicine = await medicineService.createMedicine(userId, {
-        name: req.body.name,
-        expiryDate: new Date(req.body.expiryDate),
+        name,
+        expiryDate,
+        description,
+        longDescription,
+        image,
     });
     return res
         .status(201)

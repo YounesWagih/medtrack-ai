@@ -27,12 +27,25 @@ export function useChatSessions() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (sessionId: string) => chatService.deleteSession(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
+      toast.success('Chat deleted');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to delete chat');
+    },
+  });
+
   return {
     sessions,
     isLoading,
     refetch,
     createSession: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    deleteSession: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
   };
 }
 
@@ -40,7 +53,7 @@ export function useChatMessages(sessionId: string) {
   const queryClient = useQueryClient();
 
   const {
-    data: messages = [] as ChatMessage[],
+    data: sessionData,
     isLoading,
   } = useQuery({
     queryKey: ['chat-messages', sessionId],
@@ -48,6 +61,8 @@ export function useChatMessages(sessionId: string) {
     enabled: !!sessionId,
     staleTime: 0, // always refetch on focus for chat
   });
+
+  const messages = Array.isArray(sessionData) ? sessionData : sessionData?.messages || [];
 
   const sendMutation = useMutation({
     mutationFn: (content: string) => chatService.sendMessage(sessionId, content),

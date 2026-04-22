@@ -14,6 +14,7 @@ import { MedicineForm } from '@/components/medicine/MedicineForm';
 import { useMedicines } from '@/hooks/useMedicines';
 import { toast } from 'sonner';
 import type { Medicine, MedicineStatus } from '@/types/api';
+import type { MedicineInput } from '@/lib/validations';
 import {
   Pagination,
   PaginationContent,
@@ -50,17 +51,43 @@ export function MedicinesPage() {
     setSearchParams(newParams);
   };
 
-  const handleAdd = async (data: { name: string; expiryDate: string }) => {
-    await create(data);
+  const handleAdd = async (data: MedicineInput) => {
+    // Clean the data by removing empty optional fields
+    const cleaned: any = {
+      name: data.name,
+      expiryDate: data.expiryDate,
+    };
+    if (data.image && data.image.trim()) cleaned.image = data.image;
+    if (data.description && data.description.trim()) cleaned.description = data.description;
+    if (data.longDescription && data.longDescription.trim()) cleaned.longDescription = data.longDescription;
+    await create(cleaned);
     setIsAddOpen(false);
     toast.success('Medicine added');
   };
 
-  const handleEdit = async (data: { name: string; expiryDate: string }) => {
-    if (!editingMedicine) return;
-    await update({ id: editingMedicine.id, data });
-    setEditingMedicine(null);
-    toast.success('Medicine updated');
+  const handleEdit = async (data: MedicineInput) => {
+    console.log('handleEdit called with data:', data);
+    if (!editingMedicine) {
+      console.log('No editingMedicine');
+      return;
+    }
+    // Clean the data by removing empty optional fields
+    const cleaned: any = {
+      name: data.name,
+      expiryDate: data.expiryDate,
+    };
+    if (data.image && data.image.trim()) cleaned.image = data.image;
+    if (data.description && data.description.trim()) cleaned.description = data.description;
+    if (data.longDescription && data.longDescription.trim()) cleaned.longDescription = data.longDescription;
+    console.log('Calling update with:', { id: editingMedicine.id, data: cleaned });
+    try {
+      await update({ id: editingMedicine.id, data: cleaned });
+      console.log('Update successful');
+      setEditingMedicine(null);
+      toast.success('Medicine updated');
+    } catch (error) {
+      console.error('Update failed:', error);
+    }
   };
 
   const handleDelete = async (id: string) => {
