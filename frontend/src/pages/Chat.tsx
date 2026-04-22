@@ -24,10 +24,6 @@ export function ChatPage() {
     setActiveSessionId(sessionId);
   };
 
-  const handleSendMessage = async (content: string) => {
-    return;
-  };
-
   return (
     <Layout>
       <div className="h-[calc(100vh-8rem)] flex border border-border rounded-[12px] overflow-hidden bg-surface">
@@ -41,7 +37,6 @@ export function ChatPage() {
         <div className="flex-1">
           <ChatWindow
             sessionId={activeSessionId}
-            onSendMessage={handleSendMessage}
             isLoading={isCreating}
           />
         </div>

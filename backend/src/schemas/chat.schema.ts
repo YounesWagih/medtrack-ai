@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CreateSessionSchema = z.object({});
+export const CreateSessionSchema = z.object({}).default({});
 
 export const SendMessageSchema = z.object({
     content: z.string().min(1, "Message content is required").max(4000),

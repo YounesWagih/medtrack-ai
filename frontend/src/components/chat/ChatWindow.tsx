@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -16,20 +16,43 @@ export function ChatWindow({ sessionId, onSendMessage, isLoading = false }: Chat
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages: sessionData, sendMessage, isSending } = useChatMessages(sessionId || '');
   const messages = Array.isArray(sessionData) ? sessionData : sessionData?.messages || [];
+  const [pendingMessages, setPendingMessages] = useState<ChatMessageType[]>([]);
+  const [wasSending, setWasSending] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, pendingMessages]);
+
+  useEffect(() => {
+    if (wasSending && !isSending) {
+      setPendingMessages([]);
+    }
+    setWasSending(isSending);
+  }, [isSending, wasSending]);
 
   const handleSend = async (content: string) => {
+    const tempUserMessage: ChatMessageType = {
+      id: `temp-${Date.now()}`,
+      sessionId: sessionId || '',
+      role: ChatMessageRole.USER,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    setPendingMessages(prev => [...prev, tempUserMessage]);
+
     if (onSendMessage) {
       await onSendMessage(content);
+      setPendingMessages([]);
     } else if (sessionId) {
-      await sendMessage(content);
+      sendMessage(content).then(() => {
+        setPendingMessages([]);
+      });
     }
   };
+
+  const allMessages = [...messages, ...pendingMessages];
 
   if (!sessionId) {
     return (
@@ -46,7 +69,7 @@ export function ChatWindow({ sessionId, onSendMessage, isLoading = false }: Chat
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
-          {messages.map((msg: ChatMessageType) => (
+          {allMessages.map((msg: ChatMessageType) => (
             <ChatMessage key={msg.id} message={msg} />
           ))}
           {isSending && (
