@@ -1,16 +1,22 @@
 import "dotenv/config";
 import express, { Express, Request, Response } from "express";
 import globalExceptionHandler from "./middlewares/globalExceptionHandler.js";
-import { APIError } from "./errors/APIError.js";
 import router from "./routes/index.js";
 import morgan from "morgan";
 import cors from "cors";
+import helmet from "helmet";
+import { env } from "./config/env.js";
 
 const app: Express = express();
 
-app.use(express.json());
-app.use(cors());
+app.use(helmet());
+app.use(
+    cors({
+        origin: env.FRONTEND_URL || "http://localhost:5173",
+    }),
+);
 app.use(morgan("dev"));
+app.use(express.json());
 
 app.use("/api/v1", router);
 

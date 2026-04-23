@@ -10,6 +10,7 @@ const envSchema = z.object({
         .default("3000")
         .transform((val) => parseInt(val, 10))
         .pipe(z.number().min(1).max(65535)),
+    FRONTEND_URL: z.string().default("http://localhost:5173"),
     JWT_SECRET: z
         .string()
         .min(32, "JWT_SECRET must be at least 32 characters long"),
