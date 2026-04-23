@@ -6,6 +6,7 @@ import { MedicineStatus } from '@/types/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { Calendar, Pill } from 'lucide-react';
 
 export function DashboardPage() {
   const { user } = useAuthStore();
@@ -36,43 +37,84 @@ export function DashboardPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-h1">Hello, {user?.name || 'User'}</h1>
-          <p className="text-textSecondary mt-1">Welcome back to MedTrack AI</p>
+      <div className="space-y-8 animate-fade-in-up">
+        {/* Hero Section */}
+        <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-8 border border-primary/10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-textPrimary mb-2">
+                Welcome back, {user?.name || 'User'}
+              </h1>
+              <p className="text-lg text-textSecondary">
+                Keep track of your medications with MedTrack AI
+              </p>
+            </div>
+            <div className="hidden md:block">
+              <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center">
+                <Pill className="w-12 h-12 text-primary" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatsCard title="Active Medicines" value={activeCount} color="green" />
           <StatsCard title="Expiring Soon" value={expiringSoonCount} color="orange" />
           <StatsCard title="Expired" value={expiredCount} color="red" />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-h3">Recent Medicines</CardTitle>
+        {/* Recent Medicines */}
+        <Card className="shadow-soft border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-semibold text-textPrimary flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              Recent Medicines
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8 text-textSecondary">Loading...</div>
+              <div className="text-center py-12 text-textSecondary">
+                <div className="animate-pulse">Loading your medicines...</div>
+              </div>
             ) : recentMedicines.length === 0 ? (
-              <div className="text-center py-8 text-textSecondary">
-                No medicines yet. Add your first medicine to get started.
+              <div className="text-center py-12 text-textSecondary">
+                <Pill className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+                <p className="text-lg font-medium mb-2">No medicines yet</p>
+                <p>Add your first medicine to get started tracking</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {recentMedicines.map((medicine) => (
+              <div className="space-y-4">
+                {recentMedicines.map((medicine, index) => (
                   <div
                     key={medicine.id}
-                    className="flex items-center justify-between p-3 rounded-[10px] bg-background border border-border"
+                    className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border hover:shadow-md transition-all duration-200 hover:border-primary/20 animate-slide-up"
+                    style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    <div>
-                      <p className="font-medium text-textPrimary">{medicine.name}</p>
-                      <p className="text-sm text-textSecondary">
-                        Expires: {format(new Date(medicine.expiryDate), 'MMM dd, yyyy')}
-                      </p>
+                    <div className="flex items-center space-x-4">
+                      {medicine.image ? (
+                        <img
+                          src={medicine.image}
+                          alt={medicine.name}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                          <Pill className="w-6 h-6 text-primary" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-semibold text-textPrimary text-lg">{medicine.name}</p>
+                        <p className="text-sm text-textSecondary flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          Expires: {format(new Date(medicine.expiryDate), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
                     </div>
-                    <Badge variant={getStatusBadgeVariant(medicine.status)}>
+                    <Badge
+                      variant={getStatusBadgeVariant(medicine.status)}
+                      className="px-3 py-1 text-sm font-medium"
+                    >
                       {medicine.status.replace('_', ' ')}
                     </Badge>
                   </div>

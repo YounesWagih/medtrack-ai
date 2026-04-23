@@ -84,7 +84,6 @@ export function MedicinesPage() {
       await update({ id: editingMedicine.id, data: cleaned });
       console.log('Update successful');
       setEditingMedicine(null);
-      toast.success('Medicine updated');
     } catch (error) {
       console.error('Update failed:', error);
     }

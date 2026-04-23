@@ -31,7 +31,7 @@ export function MedicineFilter({ className }: MedicineFilterProps) {
 
   return (
     <div className={cn('flex flex-col gap-4 md:flex-row md:items-center', className)}>
-      <div className="relative flex-1">
+      <div className="relative max-w-md flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search medicines..."
@@ -41,7 +41,7 @@ export function MedicineFilter({ className }: MedicineFilterProps) {
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 md:ml-4">
         <Select value={currentStatus} onValueChange={(val) => updateParam('status', val)}>
           <SelectTrigger className="w-[140px]">
             <SlidersHorizontal className="mr-2 h-4 w-4" />
@@ -68,7 +68,7 @@ export function MedicineFilter({ className }: MedicineFilterProps) {
         </Select>
 
         <Select value={currentSortOrder} onValueChange={(val) => updateParam('sortOrder', val)}>
-          <SelectTrigger className="w-[100px]">
+          <SelectTrigger className="w-[120px]">
             <SelectValue placeholder="Order" />
           </SelectTrigger>
           <SelectContent>

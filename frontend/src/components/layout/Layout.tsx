@@ -11,7 +11,7 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       <Sidebar />
       <Header />
-      <main className="ml-[240px] pt-16">
+      <main className="ml-[280px] pt-16">
         <div className="p-6">
           {children}
         </div>

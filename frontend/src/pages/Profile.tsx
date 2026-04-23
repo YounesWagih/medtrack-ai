@@ -6,9 +6,24 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth.store';
 import { User, Calendar, Mail, Shield, Settings } from 'lucide-react';
 import { format } from 'date-fns';
+import { useEffect } from 'react';
 
 export function ProfilePage() {
-  const { user } = useAuthStore();
+  const { user, fetchCurrentUser } = useAuthStore();
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        await fetchCurrentUser();
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, [fetchCurrentUser]);
+
+
 
   if (!user) {
     return (
@@ -32,8 +47,12 @@ export function ProfilePage() {
       .slice(0, 2);
   };
 
-  const getAccountAge = (createdAt: string) => {
+  const getAccountAge = (createdAt: string | Date | undefined) => {
+    if (!createdAt) return 'Unknown';
+
     const created = new Date(createdAt);
+    if (isNaN(created.getTime())) return 'Unknown';
+
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - created.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -47,6 +66,15 @@ export function ProfilePage() {
       const years = Math.floor(diffDays / 365);
       return `${years} year${years > 1 ? 's' : ''}`;
     }
+  };
+
+  const formatDate = (dateInput: string | Date | undefined, formatString: string) => {
+    if (!dateInput) return 'Unknown';
+
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return 'Unknown';
+
+    return format(date, formatString);
   };
 
   return (
@@ -70,7 +98,7 @@ export function ProfilePage() {
                   {user.email}
                 </p>
                 <p className="text-sm text-textSecondary mt-1">
-                  Member since {format(new Date(user.createdAt), 'MMMM yyyy')}
+                  Member since {formatDate(user.createdAt, 'MMMM yyyy')}
                 </p>
               </div>
             </div>
@@ -116,7 +144,7 @@ export function ProfilePage() {
                   <span className="font-medium text-textPrimary">Member Since</span>
                 </div>
                 <span className="text-textSecondary">
-                  {format(new Date(user.createdAt), 'MMM dd, yyyy')}
+                  {formatDate(user.createdAt, 'MMM dd, yyyy')}
                 </span>
               </div>
 

@@ -8,12 +8,24 @@ import { Loader2, ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { MedicineStatusBadge } from '@/components/medicine/MedicineStatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { MedicineForm } from '@/components/medicine/MedicineForm';
+import { useMedicines } from '@/hooks/useMedicines';
+import type { MedicineInput } from '@/lib/validations';
+import { toast } from 'sonner';
 
 export function MedicineViewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [medicine, setMedicine] = useState<Medicine | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const { update, isUpdating } = useMedicines();
 
   useEffect(() => {
     async function loadMedicine() {
@@ -34,7 +46,19 @@ export function MedicineViewPage() {
   }, [id]);
 
   const handleEdit = () => {
-    navigate(`/medicines/edit/${id}`);
+    setIsEditing(true);
+  };
+
+  const handleUpdate = async (data: MedicineInput) => {
+    if (!medicine) return;
+
+    try {
+      const updatedMedicine = await update({ id: medicine.id, data });
+      setMedicine(updatedMedicine);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update medicine:', error);
+    }
   };
 
   const handleDelete = async () => {
@@ -100,7 +124,7 @@ export function MedicineViewPage() {
             <div className="flex items-start justify-between">
               <div className="space-y-2">
                 <h2 className="text-xl font-semibold">{medicine.name}</h2>
-                <MedicineStatusBadge status={medicine.status} />
+                <MedicineStatusBadge status={medicine.status} className="mt-1" />
               </div>
 
               {!isRemoved && (
@@ -163,6 +187,28 @@ export function MedicineViewPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Medicine</DialogTitle>
+          </DialogHeader>
+          {medicine && (
+            <MedicineForm
+              defaultValues={{
+                name: medicine.name,
+                expiryDate: new Date(medicine.expiryDate).toISOString().split('T')[0],
+                description: medicine.description || '',
+                longDescription: medicine.longDescription || '',
+                image: medicine.image || '',
+              }}
+              onSubmit={handleUpdate}
+              isLoading={isUpdating}
+              submitLabel="Update Medicine"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

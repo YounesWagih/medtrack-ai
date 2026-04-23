@@ -35,39 +35,49 @@ export function ChatMessage({ message, isStreaming = false, responseData }: Chat
   return (
     <div
       className={cn(
-        'flex gap-3 py-4 px-4',
+        'flex gap-4 animate-fade-in-up',
         isUser ? 'justify-end' : 'justify-start'
       )}
     >
       {!isUser && (
-        <Avatar className="h-8 w-8 mt-1">
-          <AvatarFallback className="bg-muted text-textPrimary">
-            <Bot className="h-4 w-4" />
-          </AvatarFallback>
-        </Avatar>
+        <div className="flex-shrink-0">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+            <Bot className="h-5 w-5 text-white" />
+          </div>
+        </div>
       )}
-      
-      <div className={cn('max-w-[70%]', isUser && 'order-1')}>
+
+      <div className={cn('max-w-[75%] space-y-2', isUser && 'order-1')}>
         <div className={cn(
-          'rounded-[12px] px-4 py-2',
-          isUser 
-            ? 'bg-primary text-white' 
-            : 'bg-muted text-textPrimary'
+          'rounded-2xl px-4 py-3 shadow-sm relative',
+          isUser
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white ml-12'
+            : 'bg-white text-gray-800 border border-gray-100 mr-12 shadow-md'
         )}>
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
             {message.content}
             {isStreaming && (
-              <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle" />
+              <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1 align-middle rounded-full" />
             )}
           </p>
+
+          {/* Message tail */}
+          <div className={cn(
+            'absolute top-3 w-3 h-3 rotate-45',
+            isUser
+              ? 'right-[-6px] bg-gradient-to-r from-blue-600 to-indigo-600'
+              : 'left-[-6px] bg-white border-l border-t border-gray-100'
+          )} />
         </div>
-        
+
         {!isUser && responseData?.type === 'recommendation' && responseData.medicines && (
-          renderRecommendations(responseData.medicines)
+          <div className="animate-fade-in-up">
+            {renderRecommendations(responseData.medicines)}
+          </div>
         )}
-        
+
         <span className={cn(
-          'text-xs text-textSecondary mt-1 block',
+          'text-xs text-gray-500 block px-1',
           isUser ? 'text-right' : 'text-left'
         )}>
           {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -75,11 +85,11 @@ export function ChatMessage({ message, isStreaming = false, responseData }: Chat
       </div>
 
       {isUser && (
-        <Avatar className="h-8 w-8 mt-1">
-          <AvatarFallback className="bg-primary text-white">
-            <User className="h-4 w-4" />
-          </AvatarFallback>
-        </Avatar>
+        <div className="flex-shrink-0 order-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-800 rounded-full flex items-center justify-center shadow-lg">
+            <User className="h-5 w-5 text-white" />
+          </div>
+        </div>
       )}
     </div>
   );

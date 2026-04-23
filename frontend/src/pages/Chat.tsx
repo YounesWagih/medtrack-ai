@@ -67,21 +67,25 @@ export function ChatPage() {
 
   return (
     <Layout>
-      <div className="h-[calc(100vh-8rem)] flex border border-border rounded-[12px] overflow-hidden bg-surface">
-        <ChatSessionList
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={handleSelectSession}
-          onNewSession={handleNewSession}
-          onDeleteSession={handleDeleteSession}
-        />
-
-        <div className="flex-1">
-          <ChatWindow
-            sessionId={activeSessionId}
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
+      <div className="h-[calc(100vh-8rem)] flex gap-4 p-6">
+        <div className="w-[280px] flex-shrink-0">
+          <ChatSessionList
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={handleSelectSession}
+            onNewSession={handleNewSession}
+            onDeleteSession={handleDeleteSession}
           />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="h-full bg-gradient-to-br from-white via-white to-blue-50/30 rounded-2xl shadow-xl border border-white/50 backdrop-blur-sm overflow-hidden">
+            <ChatWindow
+              sessionId={activeSessionId}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
       </div>
     </Layout>

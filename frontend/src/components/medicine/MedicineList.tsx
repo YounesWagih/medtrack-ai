@@ -124,9 +124,13 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
             <span className={cn(
               'font-medium',
               isExpired && 'text-red-600',
-              isExpiringSoon && 'text-yellow-600'
+              isExpiringSoon && 'text-yellow-600',
+              isActive && 'text-green-600'
             )}>
-              {formatDistanceToNow(expiryDate, { addSuffix: true })}
+              {isExpired
+                ? `Expired ${formatDistanceToNow(expiryDate)} ago`
+                : `Expires ${formatDistanceToNow(expiryDate, { addSuffix: true })}`
+              }
             </span>
           </div>
           {medicine.createdAt && (
