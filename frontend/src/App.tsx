@@ -12,6 +12,7 @@ import { MedicineFormPage } from '@/pages/MedicineForm';
 import { MedicineDetailsPage } from '@/pages/MedicineDetails';
 import { MedicineViewPage } from '@/pages/MedicineView';
 import { ChatPage } from '@/pages/Chat';
+import { ProfilePage } from '@/pages/Profile';
 
 function AuthInitializer() {
   const { checkAuth } = useAuthStore();
@@ -81,6 +82,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ChatPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />
