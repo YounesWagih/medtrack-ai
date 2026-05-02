@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores/auth.store';
 import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function useAuth() {
   const { user, token, isLoading, isAuthenticated, login, register, logout, checkAuth } = useAuthStore();
@@ -12,9 +13,13 @@ export function useAuth() {
     await register(name, email, password);
   }, [register]);
 
+  const queryClient = useQueryClient();
+
   const handleLogout = useCallback(() => {
+    // Clear React Query cache
+    queryClient.clear();
     logout();
-  }, [logout]);
+  }, [logout, queryClient]);
 
   const isChecked = useCallback(() => {
     return checkAuth();

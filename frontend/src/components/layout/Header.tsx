@@ -54,7 +54,7 @@ export function Header() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer hover:bg-danger/10 transition-colors">
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer hover:bg-danger/10 focus:bg-danger/10 focus:text-danger transition-colors">
                   <LogOut className="mr-2 h-4 w-4 text-danger" />
                   <span className="text-danger">Log out</span>
                 </DropdownMenuItem>

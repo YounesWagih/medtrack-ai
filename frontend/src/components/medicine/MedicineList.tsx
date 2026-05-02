@@ -67,20 +67,15 @@ export function MedicineCard({ medicine, onEdit, onDelete }: MedicineCardProps) 
 
       <CardHeader className={cn('pb-2', !medicine.image && 'pt-4')}>
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="p-2 bg-primary/10 rounded-full shrink-0">
-              <Pill className="h-4 w-4 text-primary" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
-                {medicine.name}
-              </h3>
-              {medicine.description && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {medicine.description}
-                </p>
-              )}
-            </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
+              {medicine.name}
+            </h3>
+            {medicine.description && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                {medicine.description}
+              </p>
+            )}
           </div>
 
           {/* Action Menu */}

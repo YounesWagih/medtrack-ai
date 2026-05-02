@@ -49,9 +49,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        // Clear React Query cache
-        const queryClient = useQueryClient();
-        queryClient.clear();
         // Clear auth storage
         apiService.logout();
         set({ user: null, token: null, isAuthenticated: false });
@@ -62,8 +59,11 @@ export const useAuthStore = create<AuthState>()(
         if (token) {
           set({ token, isAuthenticated: true });
           return true;
+        } else {
+          // Clear state if no token
+          set({ token: null, user: null, isAuthenticated: false });
+          return false;
         }
-        return false;
       },
 
       fetchCurrentUser: async () => {
@@ -86,3 +86,8 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+// Listen for logout events from API service
+window.addEventListener('auth:logout', () => {
+  useAuthStore.getState().logout();
+});

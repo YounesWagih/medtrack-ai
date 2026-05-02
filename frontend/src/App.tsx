@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { Providers } from '@/components/layout/Providers';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { useAuthStore } from '@/stores/auth.store';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { LoginPage } from '@/pages/Login';
 import { RegisterPage } from '@/pages/Register';
@@ -16,10 +17,22 @@ import { ProfilePage } from '@/pages/Profile';
 
 function AuthInitializer() {
   const { checkAuth } = useAuthStore();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]);
+
+    // Listen for logout events (e.g., expired token) and clear query cache
+    const handleLogout = () => {
+      queryClient.clear();
+    };
+
+    window.addEventListener('auth:logout', handleLogout);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout);
+    };
+  }, [checkAuth, queryClient]);
 
   return null;
 }

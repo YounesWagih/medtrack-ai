@@ -33,7 +33,10 @@ class ApiService {
         // Handle 401/403 - logout and redirect
         if (error.response?.status === 401 || error.response?.status === 403) {
           this.clearToken();
-          window.location.href = '/login';
+          // Dispatch custom event to notify auth store
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+          // Redirect will happen after the event is handled
+          setTimeout(() => window.location.href = '/login', 0);
         }
         return Promise.reject(error);
       }
@@ -104,6 +107,8 @@ class ApiService {
   logout(): void {
     this.clearToken();
   }
+
+
 }
 
 export const apiService = new ApiService();
