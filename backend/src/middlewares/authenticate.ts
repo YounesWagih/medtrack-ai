@@ -30,12 +30,23 @@ export const authenticate = async (
 
     const token = parts[1];
 
-    const decoded = jwt.verify(token, env.JWT_SECRET) as unknown as JwtPayload;
-
-    //TODO: make separete jwt service and import the function from it
-    if (!decoded.userId) {
-        throw new APIError("Invalid token: missing userId", 401);
+let decoded: JwtPayload;
+try {
+    decoded = jwt.verify(token, env.JWT_SECRET) as unknown as JwtPayload;
+} catch (error) {
+    if (error.name === 'TokenExpiredError') {
+        throw new APIError('Token expired', 401);
     }
+    if (error.name === 'JsonWebTokenError') {
+        throw new APIError('Invalid token', 401);
+    }
+    throw error;
+}
+
+//TODO: make separete jwt service and import the function from it
+if (!decoded.userId) {
+    throw new APIError("Invalid token: missing userId", 401);
+}
 
     // Attach userId to request
     req.user = {
