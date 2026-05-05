@@ -151,6 +151,76 @@ export async function findCandidatesForStatusSync(referenceDate: Date) {
     });
 }
 
+export async function findStatusSyncChanges(
+    todayStart: Date,
+    referenceDate: Date,
+) {
+    return prisma.$transaction([
+        prisma.medicine.findMany({
+            where: {
+                status: {
+                    notIn: [MedicineStatus.REMOVED, MedicineStatus.EXPIRED],
+                },
+                expiryDate: {
+                    lt: todayStart,
+                },
+            },
+            select: {
+                id: true,
+                status: true,
+            },
+        }),
+        prisma.medicine.findMany({
+            where: {
+                status: {
+                    notIn: [
+                        MedicineStatus.REMOVED,
+                        MedicineStatus.EXPIRING_SOON,
+                    ],
+                },
+                expiryDate: {
+                    gte: todayStart,
+                    lte: referenceDate,
+                },
+            },
+            select: {
+                id: true,
+                status: true,
+            },
+        }),
+    ]);
+}
+
+export async function updateManyStatus(ids: string[], status: MedicineStatus) {
+    if (ids.length === 0) {
+        return { count: 0 };
+    }
+
+    return prisma.medicine.updateMany({
+        where: {
+            id: {
+                in: ids,
+            },
+        },
+        data: { status },
+    });
+}
+
+export async function findManyByIds(ids: string[]) {
+    if (ids.length === 0) {
+        return [];
+    }
+
+    return prisma.medicine.findMany({
+        where: {
+            id: {
+                in: ids,
+            },
+        },
+        select: MEDICINE_SELECT,
+    });
+}
+
 export async function updateStatus(id: string, status: MedicineStatus) {
     return prisma.medicine.update({
         where: { id },

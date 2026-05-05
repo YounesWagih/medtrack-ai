@@ -1,14 +1,7 @@
 import { MedicineStatus } from "@prisma/client";
 import { env } from "../config/env.js";
 
-const DEFAULT_EXPIRING_SOON_DAYS = 30;
-
-export function getExpiringSoonThresholdDays(): number {
-  const threshold = parseInt(process.env.MEDICINE_EXPIRING_SOON_DAYS || "", 10);
-  return isNaN(threshold) ? DEFAULT_EXPIRING_SOON_DAYS : threshold;
-}
-
-function getStartOfDay(date: Date): Date {
+export function getStartOfDay(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
@@ -27,7 +20,7 @@ export function isExpired(expiryDate: Date): boolean {
 }
 
 export function isExpiringSoon(expiryDate: Date, thresholdDays?: number): boolean {
-  const threshold = thresholdDays ?? getExpiringSoonThresholdDays();
+  const threshold = env.MEDICINE_EXPIRING_SOON_DAYS;
   const today = getStartOfDay(new Date());
   const exp = getStartOfDay(expiryDate);
   

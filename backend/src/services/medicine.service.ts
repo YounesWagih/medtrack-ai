@@ -4,7 +4,7 @@ import * as medicineRepo from "../repositories/medicine.repository.js";
 import {
     computeStatus,
     getEndOfDay,
-    getExpiringSoonThresholdDays,
+    getStartOfDay,
 } from "./expiry.service.js";
 import { PaginationInput } from "../schemas/common.schema.js";
 import {
@@ -16,6 +16,7 @@ import {
 } from "../schemas/medicine.schema.js";
 import { SortOrderSchema } from "../schemas/common.schema.js";
 import { PaginatedResponse } from "../types/index.js";
+import { env } from "../config/env.js";
 
 type MedicineListItem = Awaited<
     ReturnType<typeof medicineRepo.findManyByUser>
@@ -108,29 +109,51 @@ export async function removeMedicine(userId: string, medicineId: string) {
 }
 
 export async function syncMedicineStatuses() {
-    const threshold = getExpiringSoonThresholdDays();
-    const referenceDate = getEndOfDay(new Date());
+    const threshold = env.MEDICINE_EXPIRING_SOON_DAYS;
+    const now = new Date();
+    const todayStart = getStartOfDay(now);
+    const referenceDate = getEndOfDay(now);
     referenceDate.setDate(referenceDate.getDate() + threshold);
 
-    const candidates =
-        await medicineRepo.findCandidatesForStatusSync(referenceDate);
-    const results = [];
+    const [expiredChanges, expiringSoonChanges] =
+        await medicineRepo.findStatusSyncChanges(todayStart, referenceDate);
 
-    for (const candidate of candidates) {
-        const newStatus = computeStatus(candidate.expiryDate);
-        if (newStatus !== candidate.status) {
-            const updated = await medicineRepo.updateStatus(
-                candidate.id,
-                newStatus,
-            );
-            results.push({
-                id: candidate.id,
-                oldStatus: candidate.status,
-                newStatus,
-                updated,
-            });
-        }
-    }
+    const changes = [
+        ...expiredChanges.map((candidate) => ({
+            id: candidate.id,
+            oldStatus: candidate.status,
+            newStatus: MedicineStatus.EXPIRED,
+        })),
+        ...expiringSoonChanges.map((candidate) => ({
+            id: candidate.id,
+            oldStatus: candidate.status,
+            newStatus: MedicineStatus.EXPIRING_SOON,
+        })),
+    ];
+
+    await Promise.all([
+        medicineRepo.updateManyStatus(
+            expiredChanges.map((candidate) => candidate.id),
+            MedicineStatus.EXPIRED,
+        ),
+        medicineRepo.updateManyStatus(
+            expiringSoonChanges.map((candidate) => candidate.id),
+            MedicineStatus.EXPIRING_SOON,
+        ),
+    ]);
+
+    const updatedById = new Map(
+        (
+            await medicineRepo.findManyByIds(
+                changes.map((candidate) => candidate.id),
+            )
+        ).map((medicine) => [medicine.id, medicine]),
+    );
+
+    const results = changes.flatMap((change) => {
+        const updated = updatedById.get(change.id);
+        return updated ? [{ ...change, updated }] : [];
+    });
 
     return results;
 }

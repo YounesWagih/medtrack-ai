@@ -18,6 +18,7 @@ const envSchema = z.object({
     CHAT_RATE_LIMIT: z.string().default("50"),
     OPENROUTER_API_KEY: z.string().min(1, "OPENROUTER_API_KEY is required"),
     MODEL_NAME: z.string(),
+    MEDICINE_EXPIRING_SOON_DAYS: z.coerce.number().default(30)
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
