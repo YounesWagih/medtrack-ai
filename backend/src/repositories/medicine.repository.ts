@@ -3,6 +3,9 @@ import { MedicineStatus, Prisma } from "@prisma/client";
 import { SortBySchema } from "../schemas/medicine.schema.js";
 import { SortOrderSchema } from "../schemas/common.schema.js";
 
+//TODO: refactor this repo and remove all types to type folder
+
+
 type MedicineCreateInput = {
     name: string;
     expiryDate: Date;
@@ -189,6 +192,48 @@ export async function findStatusSyncChanges(
             },
         }),
     ]);
+}
+
+/**
+ * Syncs medicine statuses directly in the database using raw SQL.
+ * Returns an array of changed records with old and new statuses.
+ */
+export async function syncStatusesRaw(
+    todayStart: Date,
+    referenceDate: Date,
+): Promise<Array<{ id: string; userId: string; name: string; old_status: string; new_status: string }>> {
+    const result = await prisma.$queryRaw<Array<{ id: string; userId: string; name: string; old_status: string; new_status: string }>>`
+        WITH new_statuses AS (
+            SELECT
+                m.id,
+                m."userId",
+                m.name,
+                m."status" AS old_status,
+                CASE
+                    WHEN m."expiryDate" < ${todayStart} THEN 'EXPIRED'::"MedicineStatus"
+                    WHEN m."expiryDate" <= ${referenceDate} THEN 'EXPIRING_SOON'::"MedicineStatus"
+                    ELSE 'ACTIVE'::"MedicineStatus"
+                END AS new_status
+            FROM "Medicine" m
+            WHERE
+                m."status" != 'REMOVED'
+                AND (
+                    (m."expiryDate" < ${todayStart} AND m."status" != 'EXPIRED')
+                    OR (m."expiryDate" >= ${todayStart} AND m."expiryDate" <= ${referenceDate} AND m."status" != 'EXPIRING_SOON')
+                    OR (m."expiryDate" > ${referenceDate} AND m."status" != 'ACTIVE')
+                )
+        ),
+        updated AS (
+            UPDATE "Medicine"
+            SET "status" = ns.new_status, "updatedAt" = NOW()
+            FROM new_statuses ns
+            WHERE "Medicine".id = ns.id
+            RETURNING "Medicine".id, "Medicine"."userId", "Medicine".name, "Medicine"."status" AS new_status, ns.old_status
+        )
+        SELECT * FROM updated;
+    `;
+
+    return result;
 }
 
 export async function updateManyStatus(ids: string[], status: MedicineStatus) {

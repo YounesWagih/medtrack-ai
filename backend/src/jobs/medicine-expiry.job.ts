@@ -7,7 +7,7 @@ const DEFAULT_CRON = "*/1 * * * *"; //test
 const DEFAULT_TIMEZONE = "UTC";
 
 function getCronExpression(): string {
-  return process.env.MEDICINE_EXPIRY_CRON || DEFAULT_CRON;
+  return DEFAULT_CRON;
 }
 
 function getTimezone(): string {
@@ -45,18 +45,7 @@ export async function runMedicineExpirySync(): Promise<void> {
     console.log(`[Medicine Expiry Job] Sync completed. ${results.length} medicines updated.`);
 
     for (const result of results) {
-      const oldStatus = result.oldStatus;
-      const newStatus = result.newStatus;
-      
-      if (newStatus === MedicineStatus.EXPIRING_SOON || newStatus === MedicineStatus.EXPIRED) {
-        await sendExpiryNotification({
-          userId: result.updated.userId,
-          medicineId: result.id,
-          medicineName: result.updated.name,
-          oldStatus,
-          newStatus,
-        });
-      }
+      await sendExpiryNotification({...result});
     }
 
     const duration = Date.now() - startTime;

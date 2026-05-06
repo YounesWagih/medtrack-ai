@@ -1,11 +1,7 @@
 import { MedicineStatus } from "@prisma/client";
 import { APIError } from "../errors/APIError.js";
 import * as medicineRepo from "../repositories/medicine.repository.js";
-import {
-    computeStatus,
-    getEndOfDay,
-    getStartOfDay,
-} from "./expiry.service.js";
+import { computeStatus, getEndOfDay, getStartOfDay } from "./expiry.service.js";
 import { PaginationInput } from "../schemas/common.schema.js";
 import {
     CreateMedicineInput,
@@ -115,45 +111,19 @@ export async function syncMedicineStatuses() {
     const referenceDate = getEndOfDay(now);
     referenceDate.setDate(referenceDate.getDate() + threshold);
 
-    const [expiredChanges, expiringSoonChanges] =
-        await medicineRepo.findStatusSyncChanges(todayStart, referenceDate);
-
-    const changes = [
-        ...expiredChanges.map((candidate) => ({
-            id: candidate.id,
-            oldStatus: candidate.status,
-            newStatus: MedicineStatus.EXPIRED,
-        })),
-        ...expiringSoonChanges.map((candidate) => ({
-            id: candidate.id,
-            oldStatus: candidate.status,
-            newStatus: MedicineStatus.EXPIRING_SOON,
-        })),
-    ];
-
-    await Promise.all([
-        medicineRepo.updateManyStatus(
-            expiredChanges.map((candidate) => candidate.id),
-            MedicineStatus.EXPIRED,
-        ),
-        medicineRepo.updateManyStatus(
-            expiringSoonChanges.map((candidate) => candidate.id),
-            MedicineStatus.EXPIRING_SOON,
-        ),
-    ]);
-
-    const updatedById = new Map(
-        (
-            await medicineRepo.findManyByIds(
-                changes.map((candidate) => candidate.id),
-            )
-        ).map((medicine) => [medicine.id, medicine]),
+    // Direct SQL sync - computes and updates statuses in a single DB operation
+    const changes = await medicineRepo.syncStatusesRaw(
+        todayStart,
+        referenceDate,
     );
 
-    const results = changes.flatMap((change) => {
-        const updated = updatedById.get(change.id);
-        return updated ? [{ ...change, updated }] : [];
-    });
+    const medicines = changes.map((row) => ({
+        userId: row.userId,
+        medicineId: row.id,
+        medicineName: row.name,
+        oldStatus: row.old_status as MedicineStatus,
+        newStatus: row.new_status as MedicineStatus,
+    }));
 
-    return results;
+    return medicines;
 }
