@@ -6,6 +6,7 @@ import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import { env } from "./config/env.js";
+import { checkRedisHealth } from "./services/medicine-api.service.js";
 
 const app: Express = express();
 
@@ -20,8 +21,15 @@ app.use(express.json());
 
 app.use("/api/v1", router);
 
-app.get("/health", (_req: Request, res: Response) => {
-    res.status(200).json({ status: "ok", timeStamp: new Date().toISOString() });
+app.get("/health", async (_req: Request, res: Response) => {
+    const redisHealthy = await checkRedisHealth();
+    res.status(200).json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        dependencies: {
+            redis: redisHealthy ? "connected" : "disconnected",
+        },
+    });
 });
 
 app.use(globalExceptionHandler);

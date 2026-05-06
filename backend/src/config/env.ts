@@ -18,7 +18,11 @@ const envSchema = z.object({
     CHAT_RATE_LIMIT: z.string().default("50"),
     OPENROUTER_API_KEY: z.string().min(1, "OPENROUTER_API_KEY is required"),
     MODEL_NAME: z.string(),
-    MEDICINE_EXPIRING_SOON_DAYS: z.coerce.number().default(30)
+    MEDICINE_EXPIRING_SOON_DAYS: z.coerce.number().default(30),
+    MEDICINE_EXPIRY_CRON: z.string().default("0 0 * * *"),
+    MEDICINE_EXPIRY_CRON_TIMEZONE: z.string().default("UTC"),
+    REDIS_URL: z.string().default('redis://localhost:6379'),
+    MEDICINE_DETAILS_CACHE_TTL: z.coerce.number().default(24 * 60 * 60), // 24 hours
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
