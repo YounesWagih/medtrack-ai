@@ -26,7 +26,12 @@ export const rateLimit = async (
     try {
         await rateLimiter.consume(userId);
         next();
-    } catch {
-        throw new APIError("Too many requests. Try again later.", 429);
+    } catch (err: any) {
+        let message = "Too many requests. Try again later.";
+        if (err.msBeforeNext) {
+            const seconds = Math.ceil(err.msBeforeNext / 1000);
+            message = `Too many requests. Please try again in ${seconds} second${seconds > 1 ? 's' : ''}.`;
+        }
+        throw new APIError(message, 429);
     }
 };

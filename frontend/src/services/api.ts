@@ -26,21 +26,31 @@ class ApiService {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor: handle common errors
-    this.client.interceptors.response.use(
-      (response: AxiosResponse<ApiResponse>) => response,
-      (error) => {
-        // Handle 401/403 - logout and redirect
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          this.clearToken();
-          // Dispatch custom event to notify auth store
-          window.dispatchEvent(new CustomEvent('auth:logout'));
-          // Redirect will happen after the event is handled
-          setTimeout(() => window.location.href = '/login', 0);
-        }
-        return Promise.reject(error);
-      }
-    );
+     // Response interceptor: handle common errors
+     this.client.interceptors.response.use(
+       (response: AxiosResponse<ApiResponse>) => response,
+       (error) => {
+         // Handle 401/403 - logout and redirect
+         if (error.response?.status === 401 || error.response?.status === 403) {
+           this.clearToken();
+           // Dispatch custom event to notify auth store
+           window.dispatchEvent(new CustomEvent('auth:logout'));
+           // Redirect will happen after the event is handled
+           setTimeout(() => window.location.href = '/login', 0);
+         }
+
+         // For any other error, if we have a response with data, use the message from the data
+         if (error.response && error.response.data) {
+           const data = error.response.data as any;
+           const message = data.message || data.error;
+           // Create a new error with the message from the response
+           return Promise.reject(new Error(message || error.message));
+         }
+
+         // Otherwise, reject with the original error
+         return Promise.reject(error);
+       }
+     );
   }
 
   private getToken(): string | null {
