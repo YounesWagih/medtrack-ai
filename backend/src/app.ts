@@ -5,12 +5,14 @@ import router from "./routes/index.js";
 import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
 import { env } from "./config/env.js";
 import { checkRedisHealth } from "./services/medicine-api.service.js";
 
 const app: Express = express();
 
 app.use(helmet());
+app.use(compression());
 app.use(
     cors({
         origin: env.FRONTEND_URL || "http://localhost:5173",
