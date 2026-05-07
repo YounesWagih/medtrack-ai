@@ -1,12 +1,16 @@
 import { NextFunction, Request, Response } from "express";
-import { RateLimiterMemory } from "rate-limiter-flexible";
+import { RateLimiterRedis } from "rate-limiter-flexible";
 import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
 import { AuthenticatedRequest } from "./authenticate.js";
+import { redisClient } from "../config/redis.js";
 
-const rateLimiter = new RateLimiterMemory({
+const rateLimiter = new RateLimiterRedis({
+    storeClient: redisClient,
+    keyPrefix: "chat_rate_limit",
     points: parseInt(env.CHAT_RATE_LIMIT),
     duration: 3600,
+    blockDuration: 3600,
 });
 
 export const rateLimit = async (
