@@ -110,7 +110,7 @@ export async function countByUser(
 
 //FIXME: user can search on removed medicines!!
 export async function findByIdForUser(id: string, userId: string) {
-    return prisma.medicine.findFirst({
+    return prisma.medicine.findUniqueOrThrow({
         where: { id, userId },
         select: MEDICINE_SELECT,
     });
@@ -275,7 +275,7 @@ export async function updateStatus(id: string, status: MedicineStatus) {
 }
 
 export async function findByName(userId: string, name: string) {
-    return prisma.medicine.findFirst({
+    return prisma.medicine.findFirstOrThrow({
         where: {
             userId,
             name: { equals: name, mode: "insensitive" },

@@ -31,7 +31,7 @@ export async function createSession(userId: string, status: ChatSessionStatus) {
 }
 
 export async function findSessionById(sessionId: string, userId: string) {
-    return await prisma.chatSession.findFirst({
+    return await prisma.chatSession.findUniqueOrThrow({
         where: { id: sessionId, userId },
         select: SESSION_SELECT,
     });
@@ -61,7 +61,7 @@ export async function findMessagesBySession(sessionId: string) {
 }
 
 export async function findSessionWithMessages(sessionId: string, userId: string) {
-    return await prisma.chatSession.findFirst({
+    return await prisma.chatSession.findFirstOrThrow({
         where: { id: sessionId, userId },
         select: {
             ...SESSION_SELECT,

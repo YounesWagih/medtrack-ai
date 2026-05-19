@@ -1,5 +1,4 @@
 import { MedicineStatus } from "@prisma/client";
-import { APIError } from "../errors/APIError.js";
 import * as medicineRepo from "../repositories/medicine.repository.js";
 import { computeStatus, getEndOfDay, getStartOfDay } from "./expiry.service.js";
 import { PaginationInput } from "../schemas/common.schema.js";
@@ -7,10 +6,8 @@ import {
     CreateMedicineInput,
     ListMedicinesFilters,
     ListMedicinesSort,
-    SortBySchema,
     UpdateMedicineInput,
 } from "../schemas/medicine.schema.js";
-import { SortOrderSchema } from "../schemas/common.schema.js";
 import { PaginatedResponse } from "../types/index.js";
 import { env } from "../config/env.js";
 
@@ -63,12 +60,7 @@ export async function listMedicines(
 }
 
 export async function getMedicineById(userId: string, medicineId: string) {
-    try {
-        return await medicineRepo.findByIdForUser(medicineId, userId);
-    } catch (err: any) {
-        if (err.code === "P2025")
-            throw new APIError(`Medicine with ID ${medicineId} Not Found`, 404);
-    }
+    return await medicineRepo.findByIdForUser(medicineId, userId);
 }
 
 export async function updateMedicine(
@@ -76,32 +68,22 @@ export async function updateMedicine(
     medicineId: string,
     updatePayload: UpdateMedicineInput,
 ) {
-    try {
-        const updated = await medicineRepo.updateForUser(
-            medicineId,
-            userId,
-            updatePayload,
-        );
-        if (updatePayload.expiryDate) {
-            const newStatus = computeStatus(updatePayload.expiryDate);
-            if (newStatus !== updated.status) {
-                return await medicineRepo.updateStatus(medicineId, newStatus);
-            }
+    const updated = await medicineRepo.updateForUser(
+        medicineId,
+        userId,
+        updatePayload,
+    );
+    if (updatePayload.expiryDate) {
+        const newStatus = computeStatus(updatePayload.expiryDate);
+        if (newStatus !== updated.status) {
+            return await medicineRepo.updateStatus(medicineId, newStatus);
         }
-        return updated;
-    } catch (err: any) {
-        if (err.code === "P2025")
-            throw new APIError(`Medicine with ID ${medicineId} Not Found`, 404);
     }
+    return updated;
 }
 
 export async function removeMedicine(userId: string, medicineId: string) {
-    try {
-        return await medicineRepo.markRemoved(medicineId, userId);
-    } catch (err: any) {
-        if (err.code === "P2025")
-            throw new APIError(`Medicine with ID ${medicineId} Not Found`, 404);
-    }
+    return await medicineRepo.markRemoved(medicineId, userId);
 }
 
 export async function syncMedicineStatuses() {

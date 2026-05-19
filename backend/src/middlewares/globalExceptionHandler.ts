@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { APIError } from "../errors/APIError.js";
 import { ResponseHelper } from "../utils/responseHelper.js";
 import { ZodError } from "zod";
+import { handlePrismaError } from "../utils/prismaErrorHandler.js";
 
 export const globalExceptionHandler = (
     err: unknown,
@@ -9,7 +10,12 @@ export const globalExceptionHandler = (
     res: Response,
     _next: NextFunction,
 ) => {
-    console.log(err);
+    const prismaError = handlePrismaError(err);
+    if (prismaError) {
+        return res
+            .status(prismaError.statusCode)
+            .json(ResponseHelper.error(prismaError.message));
+    }
 
     if (err instanceof APIError) {
         return res

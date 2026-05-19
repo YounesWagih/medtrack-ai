@@ -23,9 +23,6 @@ export async function sendMessage(
     userMessage: string,
 ) {
     const session = await chatRepo.findSessionById(sessionId, userId);
-    if (!session) {
-        throw new APIError("Chat session not found", 404);
-    }
 
     await chatRepo.addMessage(sessionId, ChatMessageRole.USER, userMessage);
 
@@ -44,7 +41,6 @@ export async function sendMessage(
     }));
 
     const prompt = buildPrompt(userMessage, medicinesWithExpiry, history);
-    console.log(prompt, "--------------------------------------");
     try {
         const res = await chatSend(openrouter, {
             chatRequest: {
@@ -94,9 +90,6 @@ export async function getMessages(sessionId: string, userId: string) {
         sessionId,
         userId,
     );
-    if (!sessionWithMessages) {
-        throw new APIError("Chat session not found", 404);
-    }
     return {
         sessionId: sessionWithMessages.id,
         messages: sessionWithMessages.messages,
@@ -110,9 +103,6 @@ export async function getAllSessions(userId: string) {
 export async function deleteSession(sessionId: string, userId: string) {
     // Verify session exists and belongs to user
     const session = await chatRepo.findSessionById(sessionId, userId);
-    if (!session) {
-        throw new APIError("Chat session not found", 404);
-    }
 
     // Delete session (cascade will delete messages due to Prisma cascade config)
     await chatRepo.deleteSession(sessionId, userId);
