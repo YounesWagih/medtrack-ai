@@ -1,7 +1,11 @@
 import app from "./app.js";
 import { env } from "./config/env.js";
 import { connectRedis, disconnectRedis } from "./config/redis.js";
+import { connectDatabase } from "./db/db.js";
 import { startMedicineExpiryJob, stopMedicineExpiryJob } from "./jobs/medicine-expiry.job.js";
+
+// DB is a hard dependency — fail fast if it cannot be reached
+await connectDatabase();
 
 // Connect to Redis before starting server
 await connectRedis();
