@@ -1,6 +1,10 @@
 import { LoginInput, RegisterInput } from "../schemas/auth.schema.js";
 import * as userRepo from "../repositories/user.repository.js";
 import { APIError } from "../errors/APIError.js";
+import {
+    EmailAlreadyExistsError,
+    DatabaseError,
+} from "../errors/DomainError.js";
 import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
@@ -14,16 +18,24 @@ function generateToken(userId: string): string {
 }
 
 export async function register(data: RegisterInput) {
-    const existingUser = await userRepo.findByemail(data.email);
-    if (existingUser) throw new APIError("Email is already existed", 409);
-
     const hashedPassword = await argon2.hash(data.password);
 
-    const user = await userRepo.create({
-        email: data.email,
-        name: data.name,
-        password: hashedPassword,
-    });
+    let user;
+    try {
+        user = await userRepo.create({
+            email: data.email,
+            name: data.name,
+            password: hashedPassword,
+        });
+    } catch (err) {
+        if (err instanceof EmailAlreadyExistsError) {
+            throw new APIError("Email already used", 409);
+        }
+        if (err instanceof DatabaseError) {
+            throw new APIError("Registration failed", 500);
+        }
+        throw err;
+    }
 
     const token = generateToken(user.id);
 
@@ -35,7 +47,6 @@ export async function register(data: RegisterInput) {
 
 export async function login(data: LoginInput) {
     const user = await userRepo.findByemailWithPassword(data.email);
-    if (!user) throw new APIError("Invalid Credentials", 401);
 
     const isPasswordValid = await argon2.verify(user.password, data.password);
     if (!isPasswordValid) throw new APIError("Invalid credentials", 401);

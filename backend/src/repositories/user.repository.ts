@@ -1,5 +1,12 @@
 import { prisma } from "../db/PrismaClient.js";
 import { RegisterInput } from "../schemas/auth.schema.js";
+import {
+    EmailAlreadyExistsError,
+    ForeignKeyError,
+    ResourceNotFoundError,
+    DatabaseError,
+    classifyPrismaError,
+} from "../errors/DomainError.js";
 
 const USER_SELECT = {
     id: true,
@@ -9,30 +16,69 @@ const USER_SELECT = {
     updatedAt: true,
 } as const;
 
-export function findByemail(email: string) {
-    return prisma.user.findUnique({
-        where: { email },
-        select: USER_SELECT,
-    });
+export async function findByemail(email: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: USER_SELECT,
+        });
+        if (!user) {
+            throw new ResourceNotFoundError("User");
+        }
+        return user;
+    } catch (err) {
+        if (err instanceof ResourceNotFoundError) throw err;
+        const domainErr = classifyPrismaError(err, "User");
+        if (domainErr) throw domainErr;
+        throw new DatabaseError("Failed to find user by email");  // we throw lastly because of findUnique() which will not throw in case of not found, unlike findUniqueAndThrow() in medicine service
+    }
 }
 
-export function findByemailWithPassword(email: string) {
-    return prisma.user.findUnique({
-        where: { email },
-        select: { ...USER_SELECT, password: true },
-    });
+export async function findByemailWithPassword(email: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: { ...USER_SELECT, password: true },
+        });
+        if (!user) {
+            throw new ResourceNotFoundError("User");
+        }
+        return user;
+    } catch (err) {
+        if (err instanceof ResourceNotFoundError) throw err;
+        const domainErr = classifyPrismaError(err, "User");
+        if (domainErr) throw domainErr;
+        throw new DatabaseError("Failed to find user by email");
+    }
 }
 
-export function findById(id: string) {
-    return prisma.user.findUnique({
-        where: { id },
-        select: USER_SELECT,
-    });
+export async function findById(id: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id },
+            select: USER_SELECT,
+        });
+        if (!user) {
+            throw new ResourceNotFoundError("User");
+        }
+        return user;
+    } catch (err) {
+        if (err instanceof ResourceNotFoundError) throw err;
+        const domainErr = classifyPrismaError(err, "User");
+        if (domainErr) throw domainErr;
+        throw new DatabaseError("Failed to find user by id");
+    }
 }
 
-export function create(data: RegisterInput) {
-    return prisma.user.create({
-        data,
-        select: USER_SELECT,
-    });
+export async function create(data: RegisterInput) {
+    try {
+        return await prisma.user.create({
+            data,
+            select: USER_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err);
+        if (domainErr) throw domainErr;
+        throw new DatabaseError("Failed to create user");
+    }
 }

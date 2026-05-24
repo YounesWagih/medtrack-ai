@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { APIError } from "../errors/APIError.js";
 import { ResponseHelper } from "../utils/responseHelper.js";
 import { ZodError } from "zod";
-import { handlePrismaError } from "../utils/prismaErrorHandler.js";
+import { DomainError } from "../errors/DomainError.js";
 
 export const globalExceptionHandler = (
     err: unknown,
@@ -10,18 +10,12 @@ export const globalExceptionHandler = (
     res: Response,
     _next: NextFunction,
 ) => {
-    const prismaError = handlePrismaError(err);
-    if (prismaError) {
-        return res
-            .status(prismaError.statusCode)
-            .json(ResponseHelper.error(prismaError.message));
-    }
-
     if (err instanceof APIError) {
         return res
             .status(err.statusCode)
             .json(ResponseHelper.error(err.message));
     }
+
     if (err instanceof ZodError) {
         return res
             .status(400)
@@ -32,6 +26,13 @@ export const globalExceptionHandler = (
                 ),
             );
     }
+
+    if (err instanceof DomainError) {
+        return res
+            .status(err.httpStatus)
+            .json(ResponseHelper.error(err.message));
+    }
+
     return res.status(500).json(ResponseHelper.error("Unknown error occurred"));
 };
 

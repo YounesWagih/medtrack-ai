@@ -1,5 +1,11 @@
 import { prisma } from "../db/PrismaClient.js";
 import { ChatSessionStatus, ChatMessageRole } from "@prisma/client";
+import {
+    ForeignKeyError,
+    ResourceNotFoundError,
+    DatabaseError,
+    classifyPrismaError,
+} from "../errors/DomainError.js";
 
 const SESSION_SELECT = {
     id: true,
@@ -21,20 +27,32 @@ export type ChatSessionWithMessages = Awaited<
 >;
 
 export async function createSession(userId: string, status: ChatSessionStatus) {
-    return await prisma.chatSession.create({
-        data: {
-            userId,
-            status,
-        },
-        select: SESSION_SELECT,
-    });
+    try {
+        return await prisma.chatSession.create({
+            data: {
+                userId,
+                status,
+            },
+            select: SESSION_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err);
+        if (domainErr) throw domainErr;
+        throw new DatabaseError("Failed to create chat session");
+    }
 }
 
 export async function findSessionById(sessionId: string, userId: string) {
-    return await prisma.chatSession.findUniqueOrThrow({
-        where: { id: sessionId, userId },
-        select: SESSION_SELECT,
-    });
+    try {
+        return await prisma.chatSession.findUniqueOrThrow({
+            where: { id: sessionId, userId },
+            select: SESSION_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err, "ChatSession");
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("ChatSession");
+    }
 }
 
 export async function addMessage(
@@ -42,14 +60,20 @@ export async function addMessage(
     role: ChatMessageRole,
     content: string,
 ) {
-    return await prisma.chatMessage.create({
-        data: {
-            sessionId,
-            role,
-            content,
-        },
-        select: MESSAGE_SELECT,
-    });
+    try {
+        return await prisma.chatMessage.create({
+            data: {
+                sessionId,
+                role,
+                content,
+            },
+            select: MESSAGE_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err);
+        if (domainErr) throw domainErr;
+        throw new ForeignKeyError();
+    }
 }
 
 export async function findMessagesBySession(sessionId: string) {
@@ -61,16 +85,22 @@ export async function findMessagesBySession(sessionId: string) {
 }
 
 export async function findSessionWithMessages(sessionId: string, userId: string) {
-    return await prisma.chatSession.findFirstOrThrow({
-        where: { id: sessionId, userId },
-        select: {
-            ...SESSION_SELECT,
-            messages: {
-                orderBy: { createdAt: "asc" },
-                select: MESSAGE_SELECT,
+    try {
+        return await prisma.chatSession.findFirstOrThrow({
+            where: { id: sessionId, userId },
+            select: {
+                ...SESSION_SELECT,
+                messages: {
+                    orderBy: { createdAt: "asc" },
+                    select: MESSAGE_SELECT,
+                },
             },
-        },
-    });
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err, "ChatSession");
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("ChatSession");
+    }
 }
 
 export async function findAllByUser(userId: string) {
@@ -82,7 +112,13 @@ export async function findAllByUser(userId: string) {
 }
 
 export async function deleteSession(sessionId: string, userId: string) {
-    return await prisma.chatSession.deleteMany({
-        where: { id: sessionId, userId },
-    });
+    try {
+        return await prisma.chatSession.deleteMany({
+            where: { id: sessionId, userId },
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err, "ChatSession");
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("ChatSession");
+    }
 }

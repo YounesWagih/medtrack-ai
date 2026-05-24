@@ -2,9 +2,13 @@ import { prisma } from "../db/PrismaClient.js";
 import { MedicineStatus, Prisma } from "@prisma/client";
 import { SortBySchema } from "../schemas/medicine.schema.js";
 import { SortOrderSchema } from "../schemas/common.schema.js";
-
-//TODO: refactor this repo and remove all types to type folder
-
+import {
+    UniqueConstraintError,
+    ForeignKeyError,
+    ResourceNotFoundError,
+    DatabaseError,
+    classifyPrismaError,
+} from "../errors/DomainError.js";
 
 type MedicineCreateInput = {
     name: string;
@@ -77,13 +81,19 @@ export async function create(
     userId: string,
     data: MedicineCreateInput & { status: MedicineStatus },
 ) {
-    return await prisma.medicine.create({
-        data: {
-            ...data,
-            userId,
-        },
-        select: MEDICINE_SELECT,
-    });
+    try {
+        return await prisma.medicine.create({
+            data: {
+                ...data,
+                userId,
+            },
+            select: MEDICINE_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err);
+        if (domainErr) throw domainErr;
+        throw new DatabaseError("Failed to create medicine");
+    }
 }
 
 export async function findManyByUser(userId: string, params: ListParams) {
@@ -108,12 +118,17 @@ export async function countByUser(
     return prisma.medicine.count({ where });
 }
 
-//FIXME: user can search on removed medicines!!
 export async function findByIdForUser(id: string, userId: string) {
-    return prisma.medicine.findUniqueOrThrow({
-        where: { id, userId },
-        select: MEDICINE_SELECT,
-    });
+    try {
+        return await prisma.medicine.findUniqueOrThrow({
+            where: { id, userId },
+            select: MEDICINE_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err, "Medicine");
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("Medicine");
+    }
 }
 
 export async function updateForUser(
@@ -121,19 +136,31 @@ export async function updateForUser(
     userId: string,
     data: MedicineUpdateInput,
 ) {
-    return prisma.medicine.update({
-        where: { id, userId },
-        data,
-        select: MEDICINE_SELECT,
-    });
+    try {
+        return await prisma.medicine.update({
+            where: { id, userId },
+            data,
+            select: MEDICINE_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err, "Medicine");
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("Medicine");
+    }
 }
 
-export async function markRemoved(id: string, userId: string) {  
-  return prisma.medicine.update({
-        where: { id, userId },
-        data: { status: MedicineStatus.REMOVED },
-        select: MEDICINE_SELECT,
-    });
+export async function markRemoved(id: string, userId: string) {
+    try {
+        return await prisma.medicine.update({
+            where: { id, userId },
+            data: { status: MedicineStatus.REMOVED },
+            select: MEDICINE_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err);
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("Medicine");
+    }
 }
 
 export async function findCandidatesForStatusSync(referenceDate: Date) {
@@ -267,20 +294,32 @@ export async function findManyByIds(ids: string[]) {
 }
 
 export async function updateStatus(id: string, status: MedicineStatus) {
-    return prisma.medicine.update({
-        where: { id },
-        data: { status },
-        select: MEDICINE_SELECT,
-    });
+    try {
+        return await prisma.medicine.update({
+            where: { id },
+            data: { status },
+            select: MEDICINE_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err, "Medicine");
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("Medicine");
+    }
 }
 
 export async function findByName(userId: string, name: string) {
-    return prisma.medicine.findFirstOrThrow({
-        where: {
-            userId,
-            name: { equals: name, mode: "insensitive" },
-            status: { not: MedicineStatus.REMOVED },
-        },
-        select: MEDICINE_SELECT,
-    });
+    try {
+        return await prisma.medicine.findFirstOrThrow({
+            where: {
+                userId,
+                name: { equals: name, mode: "insensitive" },
+                status: { not: MedicineStatus.REMOVED },
+            },
+            select: MEDICINE_SELECT,
+        });
+    } catch (err) {
+        const domainErr = classifyPrismaError(err, "Medicine");
+        if (domainErr) throw domainErr;
+        throw new ResourceNotFoundError("Medicine");
+    }
 }
