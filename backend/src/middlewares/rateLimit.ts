@@ -1,16 +1,25 @@
-import { NextFunction, Request, Response } from "express";
-import { RateLimiterRedis } from "rate-limiter-flexible";
+import { NextFunction, Response } from "express";
+import { RateLimiterRedis, RateLimiterMemory } from "rate-limiter-flexible";
+
 import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
 import { AuthenticatedRequest } from "./authenticate.js";
 import { redisClient } from "../config/redis.js";
 
+const insuranceLimiter = new RateLimiterMemory({
+    points: env.CHAT_RATE_LIMIT,
+    duration: 3600,
+    blockDuration: 3600,
+});
+
 const rateLimiter = new RateLimiterRedis({
     storeClient: redisClient,
     keyPrefix: "chat_rate_limit",
-    points: parseInt(env.CHAT_RATE_LIMIT),
+    points: env.CHAT_RATE_LIMIT,
     duration: 3600,
     blockDuration: 3600,
+
+    insuranceLimiter,
 });
 
 export const rateLimit = async (
@@ -19,6 +28,7 @@ export const rateLimit = async (
     next: NextFunction,
 ) => {
     const userId = req.user?.userId;
+
     if (!userId) {
         throw new APIError("Unauthorized", 401);
     }
@@ -27,11 +37,18 @@ export const rateLimit = async (
         await rateLimiter.consume(userId);
         next();
     } catch (err: any) {
-        let message = "Too many requests. Try again later.";
-        if (err.msBeforeNext) {
+        if (err?.msBeforeNext !== undefined) {
             const seconds = Math.ceil(err.msBeforeNext / 1000);
-            message = `Too many requests. Please try again in ${seconds} second${seconds > 1 ? 's' : ''}.`;
+
+            throw new APIError(
+                `Too many requests. Please try again in ${seconds} second${seconds > 1 ? "s" : ""}`,
+                429,
+            );
         }
-        throw new APIError(message, 429);
+
+        // unexpected infrastructure error
+        console.error("Rate limiter failure:", err);
+
+        throw new APIError("Unable to process request right now.", 503);
     }
 };
