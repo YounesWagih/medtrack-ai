@@ -69,8 +69,13 @@ export async function getMedicineDetails(
                 params: { ignore_similar_products: 1 },
             },
         );
-        const product = response.data.data.product;
-        
+        const product = response.data?.data?.product;
+
+        if (!product) {
+            console.warn(`[Medicine API] Product not found for slug: ${slug}`);
+            return null;
+        }
+
         const result: MedicineDetailsResult = {
             name_en: product.name_en,
             name_ar: product.name_ar,
