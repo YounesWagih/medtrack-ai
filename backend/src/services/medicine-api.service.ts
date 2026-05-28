@@ -136,12 +136,3 @@ export async function getCacheStats(): Promise<{
         return { keys: 0 };
     }
 }
-
-export async function checkRedisHealth(): Promise<boolean> {
-    try {
-        await redisClient.ping();
-        return true;
-    } catch {
-        return false;
-    }
-}

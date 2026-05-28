@@ -7,7 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import { env } from "./config/env.js";
-import { checkRedisHealth } from "./services/medicine-api.service.js";
+import { checkRedisHealth } from "./config/redis.js";
 
 const app: Express = express();
 
