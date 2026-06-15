@@ -40,7 +40,6 @@ async function scanMedicineDetailsKeys(): Promise<string[]> {
 export async function getMedicineDetailsFromCache(
     slug: string,
 ): Promise<MedicineDetailsResult | null> {
-    const slugHash = hashSlug(slug);
     const cacheKey = getCacheKey(slug);
 
     try {
@@ -52,7 +51,7 @@ export async function getMedicineDetailsFromCache(
                     {
                         event: "cache.hit",
                         cacheNamespace: CACHE_NAMESPACE,
-                        slugHash,
+                        slug,
                     },
                     "cache hit for medicine details",
                 );
@@ -62,7 +61,7 @@ export async function getMedicineDetailsFromCache(
                     {
                         event: "cache.read_failed",
                         cacheNamespace: CACHE_NAMESPACE,
-                        slugHash,
+                        slug,
                         error: { message: (parseErr as Error).message },
                     },
                     "corrupted cache entry, fetching from API",
@@ -75,7 +74,7 @@ export async function getMedicineDetailsFromCache(
             {
                 event: "cache.miss",
                 cacheNamespace: CACHE_NAMESPACE,
-                slugHash,
+                slug,
             },
             "cache miss for medicine details",
         );
@@ -85,7 +84,7 @@ export async function getMedicineDetailsFromCache(
             {
                 event: "cache.read_failed",
                 cacheNamespace: CACHE_NAMESPACE,
-                slugHash,
+                slug,
                 error: getSafeErrorFields(err),
             },
             "cache read failed",
@@ -98,7 +97,6 @@ export async function setMedicineDetailsInCache(
     slug: string,
     result: MedicineDetailsResult,
 ): Promise<void> {
-    const slugHash = hashSlug(slug);
     const cacheKey = getCacheKey(slug);
 
     try {
@@ -109,7 +107,7 @@ export async function setMedicineDetailsInCache(
             {
                 event: "cache.set",
                 cacheNamespace: CACHE_NAMESPACE,
-                slugHash,
+                slug,
                 ttl: env.MEDICINE_DETAILS_CACHE_TTL,
             },
             "medicine details cached",
@@ -119,7 +117,7 @@ export async function setMedicineDetailsInCache(
             {
                 event: "cache.write_failed",
                 cacheNamespace: CACHE_NAMESPACE,
-                slugHash,
+                slug,
                 error: getSafeErrorFields(err),
             },
             "cache write failed",
@@ -130,15 +128,13 @@ export async function setMedicineDetailsInCache(
 export async function clearMedicineDetailsCacheEntry(
     slug: string,
 ): Promise<boolean> {
-    const slugHash = hashSlug(slug);
-
     try {
         const result = await redisClient.del(getCacheKey(slug));
         redisLogger.info(
             {
                 event: "cache.cleared",
                 cacheNamespace: CACHE_NAMESPACE,
-                slugHash,
+                slug,
             },
             "medicine details cache entry cleared",
         );
@@ -148,7 +144,7 @@ export async function clearMedicineDetailsCacheEntry(
             {
                 event: "cache.clear_failed",
                 cacheNamespace: CACHE_NAMESPACE,
-                slugHash,
+                slug,
                 error: getSafeErrorFields(err),
             },
             "cache clear failed",

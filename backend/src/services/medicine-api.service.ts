@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { createMedicineLogger } from "../logging/logger.js";
 import {
     mapExternalSearchItems,
@@ -44,7 +43,7 @@ export async function getMedicineDetails(
         medicineLogger.info(
             {
                 event: "medicine_details.not_found",
-                slugHash: hashedSlug(slug),
+                slug,
             },
             "medicine details not found for slug",
         );
@@ -70,8 +69,4 @@ export async function clearAllMedicineDetailsCache(): Promise<void> {
 
 export async function getCacheStats(): Promise<{ keys: number }> {
     return getStats();
-}
-
-function hashedSlug(slug: string): string {
-    return createHash("sha256").update(slug).digest("hex").slice(0, 16);
 }
