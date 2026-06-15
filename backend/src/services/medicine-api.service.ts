@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { createMedicineLogger } from "../logging/logger.js";
-import { getSafeErrorFields } from "../utils/error-utils.js";
 import {
     mapExternalSearchItems,
     mapExternalMedicineDetails,
@@ -28,109 +27,35 @@ export async function searchMedicines(
     page: number = 1,
     pageSize: number = 24,
 ): Promise<MedicineSearchResult[]> {
-    const start = Date.now();
-    try {
-        const rawProducts = await searchExternalMedicines(query, page, pageSize);
-        const results = mapExternalSearchItems(rawProducts);
-
-        const durationMs = Date.now() - start;
-        medicineLogger.info(
-            {
-                event: "medicine_search.completed",
-                queryLength: query.length,
-                page,
-                pageSize,
-                resultCount: results.length,
-                durationMs,
-            },
-            "medicine search completed",
-        );
-
-        return results;
-    } catch (error) {
-        const durationMs = Date.now() - start;
-        const safeFields = getSafeErrorFields(error);
-
-        medicineLogger.warn(
-            {
-                event: "medicine_search.failed",
-                durationMs,
-                error: safeFields,
-                fallback: "empty_results",
-            },
-            "medicine search failed, returning empty results",
-        );
-        return [];
-    }
+    const rawProducts = await searchExternalMedicines(query, page, pageSize);
+    return mapExternalSearchItems(rawProducts);
 }
 
 export async function getMedicineDetails(
     slug: string,
 ): Promise<MedicineDetailsResult | null> {
-    const start = Date.now();
-
     const cached = await getMedicineDetailsFromCache(slug);
     if (cached) {
-        const durationMs = Date.now() - start;
-        medicineLogger.info(
-            {
-                event: "medicine_details.completed",
-                slugHash: hashedSlug(slug),
-                durationMs,
-                cacheHit: true,
-            },
-            "medicine details retrieved from cache",
-        );
         return cached;
     }
 
-    try {
-        const product = await getExternalMedicineDetails(slug);
-
-        if (!product) {
-            const durationMs = Date.now() - start;
-            medicineLogger.info(
-                {
-                    event: "medicine_details.not_found",
-                    slugHash: hashedSlug(slug),
-                    durationMs,
-                },
-                "medicine details not found for slug",
-            );
-            return null;
-        }
-
-        const result = mapExternalMedicineDetails(product);
-
-        await setMedicineDetailsInCache(slug, result);
-
-        const durationMs = Date.now() - start;
+    const product = await getExternalMedicineDetails(slug);
+    if (!product) {
         medicineLogger.info(
             {
-                event: "medicine_details.completed",
+                event: "medicine_details.not_found",
                 slugHash: hashedSlug(slug),
-                durationMs,
-                cacheHit: false,
             },
-            "medicine details retrieved from API",
-        );
-
-        return result;
-    } catch (error) {
-        const durationMs = Date.now() - start;
-        const safeFields = getSafeErrorFields(error);
-
-        medicineLogger.warn(
-            {
-                event: "medicine_details.failed",
-                slugHash: hashedSlug(slug),
-                durationMs,
-                error: safeFields,
-            },
-            "medicine details lookup failed",
+            "medicine details not found for slug",
         );
         return null;
     }
+
+    const result = mapExternalMedicineDetails(product);
+
+    await setMedicineDetailsInCache(slug, result);
+
+    return result;
 }
 
 export async function clearMedicineDetailsCache(

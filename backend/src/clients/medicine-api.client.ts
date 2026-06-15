@@ -48,7 +48,7 @@ export async function searchExternalMedicines(
 
         externalApiLogger.info(
             {
-                event: "external_api.request.completed",
+                event: "med_api.request.completed",
                 endpoint: "/products/search",
                 method: "POST",
                 durationMs,
@@ -64,7 +64,7 @@ export async function searchExternalMedicines(
 
         externalApiLogger.warn(
             {
-                event: "external_api.request.failed",
+                event: "med_api.request.failed",
                 endpoint: "/products/search",
                 method: "POST",
                 durationMs,
@@ -96,7 +96,7 @@ export async function getExternalMedicineDetails(
 
         externalApiLogger.info(
             {
-                event: "external_api.request.completed",
+                event: "med_api.request.completed",
                 endpoint: `/products/${slug}/slug`,
                 method: "GET",
                 durationMs,
@@ -113,7 +113,7 @@ export async function getExternalMedicineDetails(
 
         externalApiLogger.warn(
             {
-                event: "external_api.request.failed",
+                event: "med_api.request.failed",
                 endpoint: `/products/${slug}/slug`,
                 method: "GET",
                 durationMs,
