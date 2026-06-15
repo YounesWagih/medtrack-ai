@@ -2,12 +2,12 @@ import "dotenv/config";
 import express, { Express, Request, Response } from "express";
 import globalExceptionHandler from "./middlewares/globalExceptionHandler.js";
 import router from "./routes/index.js";
-import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import { env } from "./config/env.js";
 import { checkRedisHealth } from "./config/redis.js";
+import { requestIdMiddleware, loggingMiddleware } from "./middlewares/requestId.js";
 
 const app: Express = express();
 
@@ -18,7 +18,10 @@ app.use(
         origin: env.FRONTEND_URL || "http://localhost:5173",
     }),
 );
-app.use(morgan("dev"));
+
+app.use(requestIdMiddleware);
+app.use(loggingMiddleware);
+
 app.use(express.json());
 
 app.use("/api/v1", router);

@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
+import { setUserId } from "../logging/context.js";
 
 export interface AuthenticatedRequest extends Request {
     user?: {
@@ -20,7 +21,9 @@ export const authenticate = async (
 ): Promise<void> => {
     // Extract Authorization header
     const authHeader = req.headers.authorization;
-    if (!authHeader) throw new APIError("No token provided", 401);
+    if (!authHeader) {
+        throw new APIError("No token provided", 401);
+    }
 
     // Check if it's in "Bearer <token>" format
     const parts = authHeader.split(" ");
@@ -52,5 +55,7 @@ export const authenticate = async (
     req.user = {
         userId: decoded.userId,
     };
+
+    setUserId(decoded.userId);
     next();
 };

@@ -8,7 +8,11 @@ import {
 import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
+import { createAuthLogger } from "../logging/logger.js";
+import { requestContextStore } from "../logging/context.js";
+import { hashEmail } from "../logging/emailHelpers.js";
 
+const authLogger = createAuthLogger();
 const TOKEN_EXPIRES_IN = "7d";
 
 function generateToken(userId: string): string {
@@ -39,6 +43,18 @@ export async function register(data: RegisterInput) {
 
     const token = generateToken(user.id);
 
+    const context = requestContextStore.getStore();
+    authLogger.info(
+        {
+            event: "auth.registered",
+            userId: user.id,
+            emailHash: hashEmail(data.email),
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+        },
+        "user registered",
+    );
+
     return {
         user,
         token,
@@ -52,6 +68,18 @@ export async function login(data: LoginInput) {
     if (!isPasswordValid) throw new APIError("Invalid credentials", 401);
 
     const token = generateToken(user.id);
+
+    const context = requestContextStore.getStore();
+    authLogger.info(
+        {
+            event: "auth.login_succeeded",
+            userId: user.id,
+            emailHash: hashEmail(data.email),
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+        },
+        "login succeeded",
+    );
 
     return {
         user: {

@@ -3,20 +3,64 @@ import { APIError } from "../errors/APIError.js";
 import { ResponseHelper } from "../utils/responseHelper.js";
 import { ZodError } from "zod";
 import { DomainError } from "../errors/DomainError.js";
+import { createErrorLogger } from "../logging/logger.js";
+import { requestContextStore } from "../logging/context.js";
+
+//TODO: refactor this file to define common log fields (path, method, route) and use it later
 
 export const globalExceptionHandler = (
     err: unknown,
-    _req: Request,
+    req: Request,
     res: Response,
     _next: NextFunction,
 ) => {
+    const errorLogger = createErrorLogger();
+    const context = requestContextStore.getStore();
+
     if (err instanceof APIError) {
-        return res
-            .status(err.statusCode)
-            .json(ResponseHelper.error(err.message));
+        const level = err.statusCode >= 500 ? "error" : "warn";
+        errorLogger[level](
+            {
+                event: "request.error",
+                requestId: context?.requestId,
+                traceId: context?.traceId,
+                userId: context?.userId,
+                route: req.route?.path,
+                method: req.method,
+                path: req.path,
+                statusCode: err.statusCode,
+                error: {
+                    name: err.name,
+                    message: err.message,
+                    stack: err.stack,
+                    isOperational: err.isOperational,
+                },
+            },
+            err.message,
+        );
+        return res.status(err.statusCode).json(ResponseHelper.error(err.message));
     }
 
     if (err instanceof ZodError) {
+        errorLogger.warn(
+            {
+                event: "request.validation_error",
+                requestId: context?.requestId,
+                traceId: context?.traceId,
+                userId: context?.userId,
+                route: req.route?.path,
+                method: req.method,
+                path: req.path,
+                statusCode: 400,
+                error: {
+                    name: err.name,
+                    message: "Validation Failed",
+                    stack: err.stack,
+                    isOperational: true,
+                },
+            },
+            "validation failed",
+        );
         return res
             .status(400)
             .json(
@@ -28,12 +72,49 @@ export const globalExceptionHandler = (
     }
 
     if (err instanceof DomainError) {
-        return res
-            .status(err.httpStatus)
-            .json(ResponseHelper.error(err.message));
+        const level = err.httpStatus >= 500 ? "error" : "warn";
+        errorLogger[level](
+            {
+                event: "request.error",
+                requestId: context?.requestId,
+                traceId: context?.traceId,
+                userId: context?.userId,
+                route: req.route?.path,
+                method: req.method,
+                path: req.path,
+                statusCode: err.httpStatus,
+                error: {
+                    name: err.name,
+                    message: err.message,
+                    stack: err.stack,
+                    isOperational: true,
+                },
+            },
+            err.message,
+        );
+        return res.status(err.httpStatus).json(ResponseHelper.error(err.message));
     }
 
-    return res.status(500).json(ResponseHelper.error("Unknown error occurred"));
+    errorLogger.error(
+        {
+            event: "request.unexpected_error",
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+            userId: context?.userId,
+            route: req.route?.path,
+            method: req.method,
+            path: req.path,
+            statusCode: 500,
+            error: {
+                name: err instanceof Error ? err.name : "UnknownError",
+                message: err instanceof Error ? err.message : "Internal Server Error",
+                stack: err instanceof Error ? err.stack : undefined,
+                isOperational: false,
+            },
+        },
+        "unexpected error",
+    );
+    return res.status(500).json(ResponseHelper.error("Internal Server Error"));
 };
 
 export default globalExceptionHandler;

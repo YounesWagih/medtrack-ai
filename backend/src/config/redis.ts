@@ -1,6 +1,8 @@
 import { createClient, type RedisClientType } from "redis";
 import { env } from "./env.js";
+import { createRedisLogger } from "../logging/logger.js";
 
+const logger = createRedisLogger();
 const MAX_REDIS_RETRIES = 8;
 const MAX_BACKOFF_MS = 30_000;
 const HEALTHCHECK_TIMEOUT_MS = 2_000;
@@ -22,7 +24,7 @@ function markRedisDegraded(): void {
         state.degraded = true;
         state.outageStartedAt = Date.now();
 
-        console.warn("Redis entered degraded mode");
+        logger.warn({ event: "redis.entered_degraded_mode" }, "Redis entered degraded mode");
     }
 }
 
@@ -33,7 +35,10 @@ function markRedisRecovered(): void {
             : 0;
 
     if (state.degraded) {
-        console.log(`Redis recovered after ${outageDuration}s outage`);
+        logger.info(
+            { event: "redis.recovered", outageDurationSeconds: outageDuration },
+            `Redis recovered after ${outageDuration}s outage`,
+        );
     }
 
     state.degraded = false;
@@ -67,7 +72,10 @@ export const redisClient: RedisClientType = createClient({
 
             const delay = Math.max(100, Math.floor(baseDelay + jitter));
 
-            console.warn(`Redis reconnect attempt #${retries} in ${delay}ms`);
+            logger.warn(
+                { event: "redis.reconnect_attempt", retryCount: retries, delayMs: delay, maxRetries: MAX_REDIS_RETRIES },
+                `Redis reconnect attempt #${retries} in ${delay}ms`,
+            );
 
             return delay;
         },
@@ -75,28 +83,31 @@ export const redisClient: RedisClientType = createClient({
 });
 
 redisClient.on("connect", () => {
-    console.log("Redis socket connected");
+    logger.info({ event: "redis.socket_connected" }, "Redis socket connected");
 });
 
 redisClient.on("ready", () => {
     markRedisRecovered();
-    console.log("Redis client ready");
+    logger.info({ event: "redis.ready" }, "Redis client ready");
 });
 
 redisClient.on("reconnecting", () => {
     if (!state.degraded) {
-        console.warn("Redis reconnecting...");
+        logger.warn({ event: "redis.reconnecting" }, "Redis reconnecting...");
     }
 });
 
 redisClient.on("end", () => {
-    console.warn("Redis connection closed");
+    logger.warn({ event: "redis.connection_closed" }, "Redis connection closed");
 });
 
 redisClient.on("error", (err) => {
     // Avoid log spam during prolonged outages
     if (!state.degraded) {
-        console.error("Redis error:", err);
+        logger.error(
+            { event: "redis.error", error: { name: err?.name, message: err?.message, stack: err?.stack } },
+            "Redis error",
+        );
     }
 });
 
@@ -115,13 +126,19 @@ export async function connectRedis(): Promise<void> {
         try {
             await redisClient.connect();
 
-            console.log("Redis connected successfully");
+            logger.info({ event: "redis.connected_successfully" }, "Redis connected successfully");
         } catch (err) {
             markRedisDegraded();
 
-            console.warn(
+            logger.warn(
+                {
+                    event: "redis.connection_failed",
+                    error: {
+                        name: err instanceof Error ? err.name : "UnknownError",
+                        message: err instanceof Error ? err.message : String(err),
+                    },
+                },
                 "Redis connection failed. Continuing without cache.",
-                err,
             );
         } finally {
             connectPromise = null;
@@ -167,10 +184,19 @@ export async function disconnectRedis(): Promise<void> {
         if (redisClient.isOpen) {
             await redisClient.quit();
 
-            console.log("Redis disconnected gracefully");
+            logger.info({ event: "redis.disconnected_gracefully" }, "Redis disconnected gracefully");
         }
     } catch (err) {
-        console.warn("Redis disconnect error:", err);
+        logger.warn(
+            {
+                event: "redis.disconnect_error",
+                error: {
+                    name: err instanceof Error ? err.name : "UnknownError",
+                    message: err instanceof Error ? err.message : String(err),
+                },
+            },
+            "Redis disconnect error",
+        );
 
         try {
             redisClient.disconnect();
@@ -195,7 +221,16 @@ export async function safeRedis<T>(
     try {
         return await operation();
     } catch (err) {
-        console.warn("Redis operation failed:", err);
+        logger.warn(
+            {
+                event: "redis.operation_failed",
+                error: {
+                    name: err instanceof Error ? err.name : "UnknownError",
+                    message: err instanceof Error ? err.message : String(err),
+                },
+            },
+            "Redis operation failed",
+        );
 
         return fallback;
     }

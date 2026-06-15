@@ -8,13 +8,31 @@ import * as medicineRepo from "../repositories/medicine.repository.js";
 import { buildPrompt } from "../utils/promptBuilder.js";
 import { parseAIResponse } from "../utils/aiResponseParser.js";
 import { ChatMessageResponse } from "../types/index.js";
+import { createChatLogger } from "../logging/logger.js";
+import { requestContextStore } from "../logging/context.js";
 
+const chatLogger = createChatLogger();
 const openrouter = new OpenRouterCore({
     apiKey: env.OPENROUTER_API_KEY,
 });
 
 export async function createSession(userId: string) {
-    return await chatRepo.createSession(userId, ChatSessionStatus.ACTIVE);
+    const session = await chatRepo.createSession(
+        userId,
+        ChatSessionStatus.ACTIVE,
+    );
+    const context = requestContextStore.getStore();
+    chatLogger.info(
+        {
+            event: "chat.session.created",
+            userId,
+            sessionId: session.id,
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+        },
+        "chat session created",
+    );
+    return session;
 }
 
 export async function sendMessage(
@@ -22,6 +40,7 @@ export async function sendMessage(
     userId: string,
     userMessage: string,
 ) {
+    const start = Date.now();
     const session = await chatRepo.findSessionById(sessionId, userId);
 
     await chatRepo.addMessage(sessionId, ChatMessageRole.USER, userMessage);
@@ -68,6 +87,25 @@ export async function sendMessage(
         );
 
         const parsedResponse = parseAIResponse(responseText);
+        const durationMs = Date.now() - start;
+        const context = requestContextStore.getStore();
+        chatLogger.info(
+            {
+                event: "chat.message.processed",
+                userId,
+                sessionId,
+                inputLength: userMessage.length,
+                historyMessageCount: history.length,
+                medicineContextCount: medicines.length,
+                model: env.MODEL_NAME,
+                responseType: parsedResponse.type,
+                durationMs,
+                requestId: context?.requestId,
+                traceId: context?.traceId,
+            },
+            "chat message processed",
+        );
+
         const result: ChatMessageResponse = {
             sessionId,
             response: parsedResponse,
@@ -106,6 +144,18 @@ export async function deleteSession(sessionId: string, userId: string) {
 
     // Delete session (cascade will delete messages due to Prisma cascade config)
     await chatRepo.deleteSession(sessionId, userId);
+
+    const context = requestContextStore.getStore();
+    chatLogger.info(
+        {
+            event: "chat.session.deleted",
+            userId,
+            sessionId,
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+        },
+        "chat session deleted",
+    );
 
     return { success: true };
 }

@@ -45,10 +45,5 @@ export const rateLimit = async (
                 429,
             );
         }
-
-        // unexpected infrastructure error
-        console.error("Rate limiter failure:", err);
-
-        throw new APIError("Unable to process request right now.", 503);
     }
 };

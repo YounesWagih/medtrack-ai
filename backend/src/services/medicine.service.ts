@@ -10,6 +10,10 @@ import {
 } from "../schemas/medicine.schema.js";
 import { PaginatedResponse } from "../types/index.js";
 import { env } from "../config/env.js";
+import { createMedicineLogger } from "../logging/logger.js";
+import { requestContextStore } from "../logging/context.js";
+
+const medicineLogger = createMedicineLogger();
 
 type MedicineListItem = Awaited<
     ReturnType<typeof medicineRepo.findManyByUser>
@@ -23,7 +27,7 @@ export async function createMedicine(
 ) {
     const status = computeStatus(input.expiryDate);
     const { description, longDescription, image } = input;
-    return await medicineRepo.create(userId, {
+    const newMedicine = await medicineRepo.create(userId, {
         name: input.name,
         expiryDate: input.expiryDate,
         status,
@@ -31,6 +35,22 @@ export async function createMedicine(
         longDescription,
         image,
     });
+
+    const context = requestContextStore.getStore();
+    medicineLogger.info(
+        {
+            event: "medicine.created",
+            userId,
+            medicineId: newMedicine.id,
+            changedFields: ["name", "expiryDate", "description", "longDescription", "image"],
+            status,
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+        },
+        "medicine created",
+    );
+
+    return newMedicine;
 }
 
 export async function listMedicines(
@@ -49,7 +69,7 @@ export async function listMedicines(
         medicineRepo.countByUser(userId, filters),
     ]);
     const totalPages = Math.ceil(total / pagination.limit);
-    return {
+    const result = {
         items,
         total,
         page: pagination.page,
@@ -57,6 +77,22 @@ export async function listMedicines(
         hasMore: pagination.page < totalPages,
         totalPages,
     };
+
+    medicineLogger.debug(
+        {
+            event: "medicine.listed",
+            userId,
+            page: pagination.page,
+            limit: pagination.limit,
+            sortBy: sort.sortBy,
+            sortOrder: sort.sortOrder,
+            filterKeys: Object.keys(filters),
+            resultCount: items.length,
+        },
+        "medicines listed",
+    );
+
+    return result;
 }
 
 export async function getMedicineById(userId: string, medicineId: string) {
@@ -76,14 +112,57 @@ export async function updateMedicine(
     if (updatePayload.expiryDate) {
         const newStatus = computeStatus(updatePayload.expiryDate);
         if (newStatus !== updated.status) {
-            return await medicineRepo.updateStatus(medicineId, newStatus);
+            const statusUpdated = await medicineRepo.updateStatus(medicineId, newStatus);
+            const context = requestContextStore.getStore();
+            medicineLogger.info(
+                {
+                    event: "medicine.updated",
+                    userId,
+                    medicineId,
+                    changedFields: Object.keys(updatePayload),
+                    oldStatus: updated.status,
+                    newStatus: statusUpdated.status,
+                    requestId: context?.requestId,
+                    traceId: context?.traceId,
+                },
+                "medicine updated with status transition",
+            );
+            return statusUpdated;
         }
     }
+
+    const context = requestContextStore.getStore();
+    medicineLogger.info(
+        {
+            event: "medicine.updated",
+            userId,
+            medicineId,
+            changedFields: Object.keys(updatePayload),
+            status: updated.status,
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+        },
+        "medicine updated",
+    );
+
     return updated;
 }
 
 export async function removeMedicine(userId: string, medicineId: string) {
-    return await medicineRepo.markRemoved(medicineId, userId);
+    const updated = await medicineRepo.markRemoved(medicineId, userId);
+    const context = requestContextStore.getStore();
+    medicineLogger.info(
+        {
+            event: "medicine.removed",
+            userId,
+            medicineId,
+            status: updated.status,
+            requestId: context?.requestId,
+            traceId: context?.traceId,
+        },
+        "medicine removed",
+    );
+    return updated;
 }
 
 export async function syncMedicineStatuses() {
@@ -106,6 +185,15 @@ export async function syncMedicineStatuses() {
         oldStatus: row.old_status as MedicineStatus,
         newStatus: row.new_status as MedicineStatus,
     }));
+
+    medicineLogger.info(
+        {
+            event: "medicine.status_sync_completed",
+            updatedCount: medicines.length,
+            threshold,
+        },
+        `medicine status sync completed: ${medicines.length} medicines updated`,
+    );
 
     return medicines;
 }
