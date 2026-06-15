@@ -1,32 +1,27 @@
-import axios from "axios";
-import { convert } from "html-to-text";
-import {
-    ExternalMedicineSearchResponse,
-    ExternalMedicineDetailsResponse,
-    MedicineSearchResult,
-    MedicineDetailsResult,
-} from "../schemas/external-api.schema.js";
-import { redisClient } from "../config/redis.js";
-import { env } from "../config/env.js";
-import {
-    createExternalApiLogger,
-    createRedisLogger,
-} from "../logging/logger.js";
 import { createHash } from "node:crypto";
+import { createMedicineLogger } from "../logging/logger.js";
+import { getSafeErrorFields } from "../utils/error-utils.js";
+import {
+    mapExternalSearchItems,
+    mapExternalMedicineDetails,
+} from "../mappers/medicine-api.mapper.js";
+import {
+    getMedicineDetailsFromCache,
+    setMedicineDetailsInCache,
+    clearMedicineDetailsCacheEntry,
+    clearAllMedicineDetailsCacheEntries,
+    getStats,
+} from "../cache/medicine-details.cache.js";
+import {
+    searchExternalMedicines,
+    getExternalMedicineDetails,
+} from "../clients/medicine-api.client.js";
+import {
+    MedicineDetailsResult,
+    MedicineSearchResult,
+} from "../schemas/external-api.schema.js";
 
-const externalApiLogger = createExternalApiLogger();
-const redisLogger = createRedisLogger();
-const EXTERNAL_API_BASE = "https://api.alabdellatif-tarshouby.com/api/customer";
-const REQUEST_TIMEOUT = 5000;
-
-const externalApiClient = axios.create({
-    baseURL: EXTERNAL_API_BASE,
-    timeout: REQUEST_TIMEOUT,
-});
-
-function hashSlug(slug: string): string {
-    return createHash("sha256").update(slug).digest("hex").slice(0, 16);
-}
+const medicineLogger = createMedicineLogger();
 
 export async function searchMedicines(
     query: string,
@@ -35,53 +30,33 @@ export async function searchMedicines(
 ): Promise<MedicineSearchResult[]> {
     const start = Date.now();
     try {
-        const response =
-            await externalApiClient.post<ExternalMedicineSearchResponse>(
-                "/products/search",
-                {
-                    q: query,
-                    page,
-                    page_size: pageSize,
-                },
-            );
+        const rawProducts = await searchExternalMedicines(query, page, pageSize);
+        const results = mapExternalSearchItems(rawProducts);
 
-        const products = response.data.data.products;
         const durationMs = Date.now() - start;
-
-        externalApiLogger.info(
+        medicineLogger.info(
             {
-                event: "external_api.medicine_search.completed",
-                dependency: "medicine-api",
+                event: "medicine_search.completed",
                 queryLength: query.length,
-                queryHash: createHash("sha256")
-                    .update(query)
-                    .digest("hex")
-                    .slice(0, 16),
                 page,
                 pageSize,
-                resultCount: products.length,
+                resultCount: results.length,
                 durationMs,
             },
             "medicine search completed",
         );
 
-        return products.map(({ name_ar, name_en, slug, image }) => ({
-            name_ar,
-            name_en,
-            slug,
-            image,
-        }));
+        return results;
     } catch (error) {
-        //still not know what shape of failure response
         const durationMs = Date.now() - start;
-        externalApiLogger.warn(
+        const safeFields = getSafeErrorFields(error);
+
+        medicineLogger.warn(
             {
-                event: "external_api.medicine_search.failed",
-                dependency: "medicine-api",
-                code: (error as any).code,
-                message: (error as Error).message,
-                fallback: "empty_results",
+                event: "medicine_search.failed",
                 durationMs,
+                error: safeFields,
+                fallback: "empty_results",
             },
             "medicine search failed, returning empty results",
         );
@@ -92,98 +67,67 @@ export async function searchMedicines(
 export async function getMedicineDetails(
     slug: string,
 ): Promise<MedicineDetailsResult | null> {
-    const cacheKey = `medicine-details:${slug}`;
-    const slugHash = hashSlug(slug);
+    const start = Date.now();
 
-    // Try cache first
-    try {
-        const cached = await redisClient.get(cacheKey);
-        if (cached) {
-            redisLogger.debug(
-                {
-                    event: "cache.hit",
-                    cacheNamespace: "medicine-details",
-                    slugHash,
-                    ttl: env.MEDICINE_DETAILS_CACHE_TTL,
-                },
-                "cache hit for medicine details",
-            );
-            return JSON.parse(cached) as MedicineDetailsResult;
-        }
-    } catch (cacheErr) {
-        redisLogger.warn(
+    const cached = await getMedicineDetailsFromCache(slug);
+    if (cached) {
+        const durationMs = Date.now() - start;
+        medicineLogger.info(
             {
-                event: "cache.read_failed",
-                cacheNamespace: "medicine-details",
-                slugHash,
-                error: { message: (cacheErr as Error).message },
+                event: "medicine_details.completed",
+                slugHash: hashedSlug(slug),
+                durationMs,
+                cacheHit: true,
             },
-            "cache read failed",
+            "medicine details retrieved from cache",
         );
-        // Continue to fetch from API even if cache fails
+        return cached;
     }
 
     try {
-        const response =
-            await externalApiClient.get<ExternalMedicineDetailsResponse>(
-                `/products/${slug}/slug`,
-                {
-                    params: { ignore_similar_products: 1 },
-                },
-            );
-        const product = response.data?.data?.product;
+        const product = await getExternalMedicineDetails(slug);
 
         if (!product) {
-            externalApiLogger.warn(
-                { event: "external_api.medicine_details.not_found", slugHash },
-                "product not found for slug",
+            const durationMs = Date.now() - start;
+            medicineLogger.info(
+                {
+                    event: "medicine_details.not_found",
+                    slugHash: hashedSlug(slug),
+                    durationMs,
+                },
+                "medicine details not found for slug",
             );
             return null;
         }
 
-        const result: MedicineDetailsResult = {
-            name_en: product.name_en,
-            name_ar: product.name_ar,
-            image: product.image,
-            description: convert(product.description_ar),
-            longDescription: product.long_description_ar,
-        };
+        const result = mapExternalMedicineDetails(product);
 
-        // Store in cache (async, don't block response)
-        try {
-            await redisClient.set(cacheKey, JSON.stringify(result), {
-                EX: env.MEDICINE_DETAILS_CACHE_TTL,
-            });
-            redisLogger.debug(
-                {
-                    event: "cache.set",
-                    cacheNamespace: "medicine-details",
-                    slugHash,
-                    ttl: env.MEDICINE_DETAILS_CACHE_TTL,
-                },
-                "medicine details cached",
-            );
-        } catch (cacheErr) {
-            redisLogger.warn(
-                {
-                    event: "cache.write_failed",
-                    cacheNamespace: "medicine-details",
-                    slugHash,
-                    error: { message: (cacheErr as Error).message },
-                },
-                "cache write failed",
-            );
-        }
+        await setMedicineDetailsInCache(slug, result);
+
+        const durationMs = Date.now() - start;
+        medicineLogger.info(
+            {
+                event: "medicine_details.completed",
+                slugHash: hashedSlug(slug),
+                durationMs,
+                cacheHit: false,
+            },
+            "medicine details retrieved from API",
+        );
 
         return result;
     } catch (error) {
-        externalApiLogger.warn(
+        const durationMs = Date.now() - start;
+        const safeFields = getSafeErrorFields(error);
+
+        medicineLogger.warn(
             {
-                event: "external_api.medicine_details.failed",
-                slugHash,
-                error: { message: (error as Error).message },
+                event: "medicine_details.failed",
+                slugHash: hashedSlug(slug),
+                durationMs,
+                error: safeFields,
             },
-            "medicine details api failed",
+            "medicine details lookup failed",
         );
         return null;
     }
@@ -192,63 +136,17 @@ export async function getMedicineDetails(
 export async function clearMedicineDetailsCache(
     slug: string,
 ): Promise<boolean> {
-    try {
-        const result = await redisClient.del(`medicine-details:${slug}`);
-        return result > 0;
-    } catch (err) {
-        redisLogger.warn(
-            {
-                event: "cache.clear_failed",
-                cacheNamespace: "medicine-details",
-                error: { message: (err as Error).message },
-            },
-            "cache clear failed",
-        );
-        return false;
-    }
+    return clearMedicineDetailsCacheEntry(slug);
 }
 
 export async function clearAllMedicineDetailsCache(): Promise<void> {
-    try {
-        const keys = await redisClient.keys("medicine-details:*");
-        if (keys.length > 0) {
-            await redisClient.del(keys);
-            redisLogger.info(
-                {
-                    event: "cache.cleared",
-                    cacheNamespace: "medicine-details",
-                    clearedCount: keys.length,
-                },
-                "medicine details cache cleared",
-            );
-        }
-    } catch (err) {
-        redisLogger.warn(
-            {
-                event: "cache.clear_failed",
-                cacheNamespace: "medicine-details",
-                error: { message: (err as Error).message },
-            },
-            "cache clear failed",
-        );
-    }
+    return clearAllMedicineDetailsCacheEntries();
 }
 
-export async function getCacheStats(): Promise<{
-    keys: number;
-}> {
-    try {
-        const keys = await redisClient.keys("medicine-details:*");
-        return { keys: keys.length };
-    } catch (err) {
-        redisLogger.warn(
-            {
-                event: "cache.stats_failed",
-                cacheNamespace: "medicine-details",
-                error: { message: (err as Error).message },
-            },
-            "cache stats failed",
-        );
-        return { keys: 0 };
-    }
+export async function getCacheStats(): Promise<{ keys: number }> {
+    return getStats();
+}
+
+function hashedSlug(slug: string): string {
+    return createHash("sha256").update(slug).digest("hex").slice(0, 16);
 }
