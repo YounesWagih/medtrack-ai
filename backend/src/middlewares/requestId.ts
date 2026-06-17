@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { requestContextStore } from "../logging/context.js";
-import { createHttpLogger } from "../logging/logger.js";
 
 const W3C_VERSION = "00";
 
@@ -41,45 +40,5 @@ export const requestIdMiddleware = (req: Request, res: Response, next: NextFunct
     };
 
     requestContextStore.enterWith(context);
-    next();
-};
-
-export const loggingMiddleware = (_req: Request, res: Response, next: NextFunction): void => {
-    const context = requestContextStore.getStore();
-    const httpLogger = createHttpLogger();
-    const start = Date.now();
-
-    httpLogger.info(
-        {
-            event: "request.started",
-            requestId: context?.requestId,
-            traceId: context?.traceId,
-            userId: context?.userId,
-            route: context?.route,
-            method: context?.method,
-            path: context?.path,
-        },
-        "request started",
-    );
-
-    res.on("finish", () => {
-        const durationMs = Date.now() - start;
-        const currentContext = requestContextStore.getStore();
-        httpLogger.info(
-            {
-                event: "request.completed",
-                requestId: currentContext?.requestId,
-                traceId: currentContext?.traceId,
-                userId: currentContext?.userId,
-                route: currentContext?.route,
-                method: currentContext?.method,
-                path: currentContext?.path,
-                statusCode: res.statusCode,
-                durationMs,
-            },
-            "request completed",
-        );
-    });
-
     next();
 };
