@@ -11,7 +11,7 @@ const logger = createHttpLogger();
 await connectDatabase();
 
 // Connect to Redis before starting server
-// await connectRedis();
+await connectRedis();
 
 // Start medicine expiry cron job
 startMedicineExpiryJob();
