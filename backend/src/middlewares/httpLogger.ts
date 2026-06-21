@@ -6,8 +6,11 @@ import { createHttpLogger } from "../logging/logger.js";
 export const httpLoggerMiddleware = pinoHttp<Request, Response>({
     logger: createHttpLogger(),
     quietResLogger: true,
-    customLogLevel: (_req, res) =>
-        res.statusCode >= 500 ? "silent" : "info",
+    customLogLevel: (_req, res) => {
+        if (res.statusCode >= 500) return "error";
+        if (res.statusCode >= 400) return "warn";
+        return "info";
+    },
     customSuccessObject(req, res, val) {
         const context = requestContextStore.getStore();
 

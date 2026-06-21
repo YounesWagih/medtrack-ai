@@ -1,10 +1,7 @@
 import { LoginInput, RegisterInput } from "../schemas/auth.schema.js";
 import * as userRepo from "../repositories/user.repository.js";
 import { APIError } from "../errors/APIError.js";
-import {
-    EmailAlreadyExistsError,
-    DatabaseError,
-} from "../errors/DomainError.js";
+import { EmailAlreadyExistsError } from "../errors/DomainError.js";
 import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
@@ -34,9 +31,6 @@ export async function register(data: RegisterInput) {
     } catch (err) {
         if (err instanceof EmailAlreadyExistsError) {
             throw new APIError("Email already used", 409);
-        }
-        if (err instanceof DatabaseError) {
-            throw new APIError("Registration failed", 500);
         }
         throw err;
     }
