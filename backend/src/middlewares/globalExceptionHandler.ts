@@ -18,49 +18,31 @@ export const globalExceptionHandler = (
     const context = requestContextStore.getStore();
 
     if (err instanceof APIError) {
-        const level = err.statusCode >= 500 ? "error" : "warn";
-        errorLogger[level](
-            {
-                event: "request.error",
-                requestId: context?.requestId,
-                traceId: context?.traceId,
-                userId: context?.userId,
-                route: req.route?.path,
-                method: req.method,
-                path: req.path,
-                statusCode: err.statusCode,
-                error: {
-                    name: err.name,
-                    message: err.message,
-                    stack: err.stack,
-                    isOperational: err.isOperational,
+        if (err.statusCode >= 500) {
+            errorLogger.error(
+                {
+                    event: "request.error",
+                    requestId: context?.requestId,
+                    traceId: context?.traceId,
+                    userId: context?.userId,
+                    route: req.route?.path,
+                    method: req.method,
+                    path: req.path,
+                    statusCode: err.statusCode,
+                    error: {
+                        name: err.name,
+                        message: err.message,
+                        stack: err.stack,
+                        isOperational: err.isOperational,
+                    },
                 },
-            },
-            err.message,
-        );
+                err.message,
+            );
+        }
         return res.status(err.statusCode).json(ResponseHelper.error(err.message));
     }
 
     if (err instanceof ZodError) {
-        errorLogger.warn(
-            {
-                event: "request.validation_error",
-                requestId: context?.requestId,
-                traceId: context?.traceId,
-                userId: context?.userId,
-                route: req.route?.path,
-                method: req.method,
-                path: req.path,
-                statusCode: 400,
-                error: {
-                    name: err.name,
-                    message: "Validation Failed",
-                    stack: err.stack,
-                    isOperational: true,
-                },
-            },
-            "validation failed",
-        );
         return res
             .status(400)
             .json(
@@ -72,26 +54,27 @@ export const globalExceptionHandler = (
     }
 
     if (err instanceof DomainError) {
-        const level = err.httpStatus >= 500 ? "error" : "warn";
-        errorLogger[level](
-            {
-                event: "request.error",
-                requestId: context?.requestId,
-                traceId: context?.traceId,
-                userId: context?.userId,
-                route: req.route?.path,
-                method: req.method,
-                path: req.path,
-                statusCode: err.httpStatus,
-                error: {
-                    name: err.name,
-                    message: err.message,
-                    stack: err.stack,
-                    isOperational: true,
+        if (err.httpStatus >= 500) {
+            errorLogger.error(
+                {
+                    event: "request.error",
+                    requestId: context?.requestId,
+                    traceId: context?.traceId,
+                    userId: context?.userId,
+                    route: req.route?.path,
+                    method: req.method,
+                    path: req.path,
+                    statusCode: err.httpStatus,
+                    error: {
+                        name: err.name,
+                        message: err.message,
+                        stack: err.stack,
+                        isOperational: true,
+                    },
                 },
-            },
-            err.message,
-        );
+                err.message,
+            );
+        }
         return res.status(err.httpStatus).json(ResponseHelper.error(err.message));
     }
 

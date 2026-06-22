@@ -1,0 +1,113 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+}
+
+discovery.relabel "backend" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_logging_grafana_com_scrape"]
+    action        = "keep"
+    regex         = "true"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_logging_grafana_com_service"]
+    target_label  = "service"
+    action        = "replace"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+    action        = "replace"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+    action        = "replace"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+    replacement   = "$1"
+    action        = "replace"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "backend"
+  }
+}
+
+loki.source.docker "backend" {
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.relabel.backend.output
+  forward_to       = [loki.process.backend.receiver]
+  refresh_interval = "5s"
+}
+
+loki.process "backend" {
+  forward_to = [loki.write.local.receiver]
+
+  stage.json {
+    expressions = {
+      level       = "level",
+      levelLabel  = "levelLabel",
+      service     = "service",
+      environment = "environment",
+      version     = "version",
+      logger      = "logger",
+      event       = "event",
+      requestId   = "requestId",
+      traceId     = "traceId",
+      spanId      = "spanId",
+      userId      = "userId",
+      route       = "route",
+      method      = "method",
+      path        = "path",
+      statusCode  = "statusCode",
+      durationMs  = "durationMs",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level       = "levelLabel",
+      service     = "service",
+      environment = "environment",
+      logger      = "logger",
+      event       = "event",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      version    = "version",
+      requestId  = "requestId",
+      traceId    = "traceId",
+      spanId     = "spanId",
+      userId     = "userId",
+      route      = "route",
+      method     = "method",
+      path       = "path",
+      statusCode = "statusCode",
+      durationMs = "durationMs",
+    }
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

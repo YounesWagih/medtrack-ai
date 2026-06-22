@@ -7,7 +7,8 @@ import helmet from "helmet";
 import compression from "compression";
 import { env } from "./config/env.js";
 import { checkRedisHealth } from "./config/redis.js";
-import { requestIdMiddleware, loggingMiddleware } from "./middlewares/requestId.js";
+import { requestIdMiddleware } from "./middlewares/requestId.js";
+import { httpLoggerMiddleware } from "./middlewares/httpLogger.js";
 
 const app: Express = express();
 
@@ -20,7 +21,7 @@ app.use(
 );
 
 app.use(requestIdMiddleware);
-app.use(loggingMiddleware);
+app.use(httpLoggerMiddleware);
 
 app.use(express.json());
 

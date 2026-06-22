@@ -1,16 +1,23 @@
 import pino from "pino";
 import { prettyTransport } from "./transport.js";
 import { env } from "../config/env.js";
-import type { LogLevel } from "./types.js";
-
 
 export const rootLogger = pino(
     {
         level: env.LOG_LEVEL,
+        timestamp: pino.stdTimeFunctions.isoTime,
         base: {
             service: env.SERVICE_NAME,
             environment: env.NODE_ENV,
             version: env.SERVICE_VERSION,
+        },
+        formatters: {
+            level(label, number) {
+                return {
+                    level: number,
+                    levelLabel: label,
+                };
+            },
         },
         redact: {
             paths: [
