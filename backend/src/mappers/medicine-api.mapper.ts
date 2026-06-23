@@ -1,4 +1,5 @@
 import { convert } from "html-to-text";
+import { sanitizeTrustedHtml } from "../utils/sanitizer.js";
 import {
     ExternalMedicineDetails,
     ExternalMedicineSearchItem,
@@ -24,7 +25,7 @@ export function mapExternalMedicineDetails(
         name_en: product.name_en,
         name_ar: product.name_ar,
         image: product.image,
-        description: convert(product.description_ar ?? ""),
-        longDescription: product.long_description_ar,
+        description: sanitizeTrustedHtml(convert(product.description_ar ?? "")),
+        longDescription: sanitizeTrustedHtml(product.long_description_ar ?? ""),
     };
 }

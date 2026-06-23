@@ -18,6 +18,8 @@ import { MedicineForm } from '@/components/medicine/MedicineForm';
 import { useMedicines } from '@/hooks/useMedicines';
 import type { MedicineInput } from '@/lib/validations';
 import { toast } from 'sonner';
+import { Layout } from '@/components/layout/Layout';
+import { getErrorMessage, sanitizeHtml } from '@/lib/utils';
 
 export function MedicineViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +27,7 @@ export function MedicineViewPage() {
   const [medicine, setMedicine] = useState<Medicine | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { update, isUpdating } = useMedicines();
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export function MedicineViewPage() {
         const medicineData = await medicineService.get(id);
         setMedicine(medicineData);
       } catch (error) {
-        console.error('Failed to load medicine:', error);
+        toast.error(getErrorMessage(error, 'Failed to load medicine'));
       } finally {
         setLoading(false);
       }
@@ -57,55 +60,58 @@ export function MedicineViewPage() {
       setMedicine(updatedMedicine);
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to update medicine:', error);
+      toast.error(getErrorMessage(error, 'Failed to update medicine'));
     }
   };
 
   const handleDelete = async () => {
     if (!medicine) return;
 
-    if (confirm('Are you sure you want to remove this medicine?')) {
-      try {
-        await medicineService.remove(medicine.id);
-        navigate('/medicines');
-      } catch (error) {
-        console.error('Failed to delete medicine:', error);
-      }
+    try {
+      await medicineService.remove(medicine.id);
+      toast.success('Medicine removed');
+      navigate('/medicines');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to remove medicine'));
     }
   };
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-          <div className="w-24 h-24 bg-primary/10 rounded-2xl flex items-center justify-center">
-            <Pill className="w-12 h-12 text-primary animate-pulse" />
-          </div>
-          <div className="text-center space-y-2">
-            <p className="text-lg font-medium text-textPrimary">Loading medicine details...</p>
-            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+      <Layout>
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <div className="w-24 h-24 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <Pill className="w-12 h-12 text-primary animate-pulse" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-lg font-medium text-textPrimary">Loading medicine details...</p>
+              <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+            </div>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   if (!medicine) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center py-16 space-y-6">
-          <div className="w-24 h-24 bg-muted rounded-2xl flex items-center justify-center mx-auto">
-            <Pill className="w-12 h-12 text-muted-foreground" />
+      <Layout>
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="text-center py-16 space-y-6">
+            <div className="w-24 h-24 bg-muted rounded-2xl flex items-center justify-center mx-auto">
+              <Pill className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-textPrimary mb-2">Medicine not found</h2>
+              <p className="text-muted-foreground">The medicine you're looking for doesn't exist or has been removed.</p>
+            </div>
+            <Button onClick={() => navigate('/medicines')} className="bg-primary hover:bg-primary/90">
+              Back to Medicines
+            </Button>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-textPrimary mb-2">Medicine not found</h2>
-            <p className="text-muted-foreground">The medicine you're looking for doesn't exist or has been removed.</p>
-          </div>
-          <Button onClick={() => navigate('/medicines')} className="bg-primary hover:bg-primary/90">
-            Back to Medicines
-          </Button>
         </div>
-      </div>
+      </Layout>
     );
   }
 
@@ -116,7 +122,8 @@ export function MedicineViewPage() {
   const isActive = medicine.status === 'ACTIVE';
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in-up">
+    <Layout>
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="hover:bg-primary/10">
@@ -161,7 +168,7 @@ export function MedicineViewPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={handleDelete}
+                    onClick={() => setIsDeleteOpen(true)}
                     className="text-danger hover:text-danger hover:bg-danger/5 border-danger/30 hover:border-danger/50 transition-colors"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -260,7 +267,7 @@ export function MedicineViewPage() {
           <CardContent>
             <div
               className="text-sm prose prose-sm max-w-none text-textSecondary leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: medicine.longDescription }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(medicine.longDescription) }}
             />
           </CardContent>
         </Card>
@@ -290,6 +297,25 @@ export function MedicineViewPage() {
           )}
         </DialogContent>
       </Dialog>
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Medicine</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-textSecondary">
+            Are you sure you want to remove {medicine.name} from your inventory?
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDelete}>
+              Remove
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+    </Layout>
   );
 }

@@ -12,6 +12,7 @@ import { PaginatedResponse } from "../types/index.js";
 import { env } from "../config/env.js";
 import { createMedicineLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
+import { sanitizeTrustedHtml } from "../utils/sanitizer.js";
 
 const medicineLogger = createMedicineLogger();
 
@@ -26,7 +27,13 @@ export async function createMedicine(
     input: CreateMedicineInput,
 ) {
     const status = computeStatus(input.expiryDate);
-    const { description, longDescription, image } = input;
+    const { image } = input;
+    const description = input.description
+        ? sanitizeTrustedHtml(input.description)
+        : undefined;
+    const longDescription = input.longDescription
+        ? sanitizeTrustedHtml(input.longDescription)
+        : undefined;
     const newMedicine = await medicineRepo.create(userId, {
         name: input.name,
         expiryDate: input.expiryDate,
@@ -104,13 +111,21 @@ export async function updateMedicine(
     medicineId: string,
     updatePayload: UpdateMedicineInput,
 ) {
+    const sanitizedPayload: UpdateMedicineInput = { ...updatePayload };
+    if (typeof sanitizedPayload.description === "string") {
+        sanitizedPayload.description = sanitizeTrustedHtml(sanitizedPayload.description);
+    }
+    if (typeof sanitizedPayload.longDescription === "string") {
+        sanitizedPayload.longDescription = sanitizeTrustedHtml(sanitizedPayload.longDescription);
+    }
+
     const updated = await medicineRepo.updateForUser(
         medicineId,
         userId,
-        updatePayload,
+        sanitizedPayload,
     );
-    if (updatePayload.expiryDate) {
-        const newStatus = computeStatus(updatePayload.expiryDate);
+    if (sanitizedPayload.expiryDate) {
+        const newStatus = computeStatus(sanitizedPayload.expiryDate);
         if (newStatus !== updated.status) {
             const statusUpdated = await medicineRepo.updateStatus(medicineId, newStatus);
             const context = requestContextStore.getStore();
@@ -119,7 +134,7 @@ export async function updateMedicine(
                     event: "medicine.updated",
                     userId,
                     medicineId,
-                    changedFields: Object.keys(updatePayload),
+                    changedFields: Object.keys(sanitizedPayload),
                     oldStatus: updated.status,
                     newStatus: statusUpdated.status,
                     requestId: context?.requestId,
@@ -137,7 +152,7 @@ export async function updateMedicine(
             event: "medicine.updated",
             userId,
             medicineId,
-            changedFields: Object.keys(updatePayload),
+            changedFields: Object.keys(sanitizedPayload),
             status: updated.status,
             requestId: context?.requestId,
             traceId: context?.traceId,

@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, AlertCircle, ArrowLeft, Pill, Info, CheckCircle, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { medicineSchema, type MedicineInput } from '@/lib/validations';
 import { DateSelect } from '@/components/ui/date-select';
+import { Layout } from '@/components/layout/Layout';
+import { getErrorMessage, sanitizeHtml } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function MedicineDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -93,47 +95,52 @@ export function MedicineDetailsPage() {
     setSubmitting(true);
     medicineService.create(data)
       .then(() => navigate('/medicines'))
-      .catch((error) => console.error('Failed to add medicine:', error))
+      .catch((error: unknown) => toast.error(getErrorMessage(error, 'Failed to add medicine')))
       .finally(() => setSubmitting(false));
   };
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-          <div className="w-24 h-24 bg-primary/10 rounded-2xl flex items-center justify-center">
-            <Pill className="w-12 h-12 text-primary animate-pulse" />
-          </div>
-          <div className="text-center space-y-2">
-            <p className="text-lg font-medium text-textPrimary">Loading medicine details...</p>
-            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+      <Layout>
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <div className="w-24 h-24 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <Pill className="w-12 h-12 text-primary animate-pulse" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-lg font-medium text-textPrimary">Loading medicine details...</p>
+              <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+            </div>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   if (!details) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center py-16 space-y-6">
-          <div className="w-24 h-24 bg-muted rounded-2xl flex items-center justify-center mx-auto">
-            <Pill className="w-12 h-12 text-muted-foreground" />
+      <Layout>
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="text-center py-16 space-y-6">
+            <div className="w-24 h-24 bg-muted rounded-2xl flex items-center justify-center mx-auto">
+              <Pill className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-textPrimary mb-2">Medicine Not Found</h2>
+              <p className="text-muted-foreground">The medicine details you're looking for are not available.</p>
+            </div>
+            <Button onClick={() => navigate('/medicines')} className="bg-primary hover:bg-primary/90">
+              Back to Medicines
+            </Button>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-textPrimary mb-2">Medicine Not Found</h2>
-            <p className="text-muted-foreground">The medicine details you're looking for are not available.</p>
-          </div>
-          <Button onClick={() => navigate('/medicines/add')} className="bg-primary hover:bg-primary/90">
-            Back to Add Medicine
-          </Button>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in-up">
+    <Layout>
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="hover:bg-primary/10">
@@ -249,7 +256,7 @@ export function MedicineDetailsPage() {
               <div
                 className="text-sm prose prose-sm max-w-none text-textSecondary leading-relaxed text-right"
                 dir="rtl"
-                dangerouslySetInnerHTML={{ __html: details.description }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(details.description) }}
               />
             </CardContent>
           </Card>
@@ -267,18 +274,13 @@ export function MedicineDetailsPage() {
               <div
                 className="text-sm prose prose-sm max-w-none text-textSecondary leading-relaxed text-right"
                 dir="rtl"
-                dangerouslySetInnerHTML={{ __html: details.longDescription }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(details.longDescription) }}
               />
             </CardContent>
           </Card>
         )}
       </div>
-
-      <input type="hidden" value={getValues('name')} />
-      <input type="hidden" value={getValues('description')} />
-      <input type="hidden" value={getValues('longDescription')} />
-      <input type="hidden" value={getValues('image')} />
-      <input type="hidden" value={getValues('expiryDate')} />
     </div>
+    </Layout>
   );
 }

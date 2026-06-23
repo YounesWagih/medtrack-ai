@@ -59,11 +59,6 @@ function DateSelect({ value, onChange, minDate, className }: DateSelectProps) {
     return years
   }, [currentYear])
 
-  const daysInMonth = React.useMemo(() => {
-    if (localYear === null || localMonth === null) return 31
-    return new Date(localYear, localMonth + 1, 0).getDate()
-  }, [localYear, localMonth])
-
   const handleYearChange = (yearStr: string) => {
     const year = parseInt(yearStr, 10)
     setLocalYear(year)
@@ -106,12 +101,6 @@ function DateSelect({ value, onChange, minDate, className }: DateSelectProps) {
         onChange?.(newDate)
       }
     }
-  }
-
-  // Helper to check if a specific date is before min
-  const isDateDisabled = (date: Date) => {
-    date.setHours(0, 0, 0, 0)
-    return date < min
   }
 
   // Disabled predicates for each select's options

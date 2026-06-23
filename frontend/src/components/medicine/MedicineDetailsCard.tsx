@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import type { ExternalMedicineDetails } from '@/types/api';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { sanitizeHtml } from '@/lib/utils';
 
 interface MedicineDetailsCardProps {
   details: ExternalMedicineDetails | null;
@@ -50,7 +50,7 @@ export function MedicineDetailsCard({ details, isLoading = false }: MedicineDeta
            <div
              className="prose prose-sm max-w-none text-right"
              dir="rtl"
-             dangerouslySetInnerHTML={{ __html: details.description }}
+             dangerouslySetInnerHTML={{ __html: sanitizeHtml(details.description) }}
            />
          )}
 
@@ -58,19 +58,9 @@ export function MedicineDetailsCard({ details, isLoading = false }: MedicineDeta
            <div
              className="prose prose-sm max-w-none text-right"
              dir="rtl"
-             dangerouslySetInnerHTML={{ __html: details.longDescription }}
+             dangerouslySetInnerHTML={{ __html: sanitizeHtml(details.longDescription) }}
            />
          )}
-
-         <div className="mt-4 text-center">
-           <Button
-             onClick={() => window.location.reload()}
-             variant="outline"
-             size="sm"
-           >
-             Refresh
-           </Button>
-         </div>
       </CardContent>
     </Card>
   );

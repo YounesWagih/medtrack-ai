@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { medicineSchema, type MedicineInput } from '@/lib/validations';
 import { medicineService } from '@/services/medicine.service';
 import type { ExternalMedicineSearchItem, ExternalMedicineDetails } from '@/types/api';

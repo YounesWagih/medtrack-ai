@@ -2,7 +2,6 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
   onSend: (message: string) => Promise<void> | void;
@@ -34,7 +33,7 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Type your m
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-3 p-6 bg-gradient-to-r from-gray-50 to-white border-t border-gray-100/50">
+    <form onSubmit={handleSubmit} className="flex items-end gap-3 p-4 sm:p-6 bg-surface border-t border-border">
       <div className="flex-1 relative">
         <Textarea
           value={message}
@@ -42,9 +41,9 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Type your m
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || isSubmitting}
-          className="min-h-[52px] max-h-[160px] resize-none border-2 border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-xl px-4 py-3 text-sm transition-all duration-300 bg-white shadow-sm hover:shadow-md focus:shadow-lg"
+          className="min-h-[52px] max-h-[160px] resize-none border-border focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-xl px-4 py-3 pr-32 text-sm transition-all duration-200 bg-surface shadow-sm"
         />
-        <div className="absolute bottom-3 right-3 text-xs text-gray-400">
+        <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
           Press Enter to send
         </div>
       </div>
@@ -52,7 +51,7 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Type your m
         type="submit"
         size="icon"
         disabled={!message.trim() || disabled || isSubmitting}
-        className="h-12 w-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none rounded-xl"
+        className="h-12 w-12 shadow-soft transition-all duration-200 hover:scale-105 disabled:cursor-not-allowed disabled:transform-none rounded-xl"
       >
         {isSubmitting ? (
           <Loader2 className="h-5 w-5 animate-spin" />

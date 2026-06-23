@@ -1,6 +1,8 @@
 import apiService from '@/services/api';
 import type { ChatSession, ChatMessage, SendMessageDto, ChatMessageResponse } from '@/types/api';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+
 export const chatService = {
   // Create a new chat session
   async createSession(): Promise<ChatSession> {
@@ -30,7 +32,7 @@ export const chatService = {
   // Stream a message (if backend supports streaming)
   // This would use fetch directly for streaming
   async *streamMessage(sessionId: string, content: string): AsyncGenerator<string, void, unknown> {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/sessions/${sessionId}/messages/stream`, {
+    const response = await fetch(`${API_URL}/chat/sessions/${sessionId}/messages/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -9,7 +9,12 @@ import {
 } from 'lucide-react';
 import medTrackIcon from '@/assets/MedTrack-Ai-icon.png';
 
-export function Sidebar() {
+interface SidebarProps {
+  className?: string;
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ className, onNavigate }: SidebarProps) {
   const location = useLocation();
 
   const navItems = [
@@ -20,10 +25,13 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[280px] bg-gradient-to-b from-primary/5 via-surface to-primary/5 border-r border-border/50 shadow-lg">
+    <aside className={cn(
+      "h-screen w-[280px] bg-gradient-to-b from-primary/5 via-surface to-primary/5 border-r border-border/50 shadow-lg",
+      className
+    )}>
       <div className="flex flex-col h-full">
         <div className="p-8 border-b border-border/20">
-          <Link to="/dashboard" className="flex items-center group">
+          <Link to="/dashboard" className="flex items-center group" onClick={onNavigate}>
             <img
               src={medTrackIcon}
               alt="MedTrack AI"
@@ -35,9 +43,11 @@ export function Sidebar() {
         <nav className="flex-1 p-6 space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.href;
+            const isActive =
+              location.pathname === item.href ||
+              (item.href !== '/dashboard' && location.pathname.startsWith(`${item.href}/`));
             return (
-              <Link key={item.href} to={item.href} className="block">
+              <Link key={item.href} to={item.href} className="block" onClick={onNavigate}>
                 <Button
                   variant="ghost"
                   className={cn(

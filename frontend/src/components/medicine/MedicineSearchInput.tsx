@@ -75,6 +75,10 @@ export function MedicineSearchInput({ placeholder = 'Search medicine...', onSele
   const handleSelect = (medicine: ExternalMedicineSearchItem) => {
     setIsOpen(false);
     setQuery('');
+    if (onSelect) {
+      onSelect(medicine);
+      return;
+    }
     navigate(`/medicines/details/${medicine.slug}`);
   };
 

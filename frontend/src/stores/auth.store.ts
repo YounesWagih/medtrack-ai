@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types/api';
 import apiService from '@/services/api';
-import { useQueryClient } from '@tanstack/react-query';
 
 interface AuthState {
   user: User | null;

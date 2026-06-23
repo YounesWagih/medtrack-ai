@@ -41,7 +41,7 @@ class ApiService {
 
          // For any other error, if we have a response with data, use the message from the data
          if (error.response && error.response.data) {
-           const data = error.response.data as any;
+           const data = error.response.data as { message?: string; error?: string };
            const message = data.message || data.error;
            // Create a new error with the message from the response
            return Promise.reject(new Error(message || error.message));

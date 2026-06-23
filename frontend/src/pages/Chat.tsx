@@ -6,7 +6,7 @@ import { ChatWindow } from '@/components/chat/ChatWindow';
 import { useChatSessions, useChatMessages } from '@/hooks/useChat';
 import { chatService } from '@/services/chat.service';
 import { toast } from 'sonner';
-import type { ChatSession } from '@/types/api';
+import { getErrorMessage } from '@/lib/utils';
 
 export function ChatPage() {
   const queryClient = useQueryClient();
@@ -40,8 +40,8 @@ export function ChatPage() {
     if (activeSessionId) {
       try {
         await sendToActiveSession(content);
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to send message');
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error, 'Failed to send message'));
         throw error;
       }
     } else {
@@ -54,8 +54,8 @@ export function ChatPage() {
         await chatService.sendMessage(newSession.id, content);
         // Invalidate messages for the new session so UI updates
         await queryClient.invalidateQueries({ queryKey: ['chat-messages', newSession.id] });
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to send message');
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error, 'Failed to send message'));
         throw error;
       } finally {
         setIsSendingFirst(false);
@@ -67,8 +67,8 @@ export function ChatPage() {
 
   return (
     <Layout>
-      <div className="h-[calc(100vh-8rem)] flex gap-4 p-6">
-        <div className="w-[280px] flex-shrink-0">
+      <div className="h-[calc(100vh-7rem)] flex flex-col lg:flex-row gap-4">
+        <div className="w-full lg:w-[280px] lg:flex-shrink-0 h-48 lg:h-full">
           <ChatSessionList
             sessions={sessions}
             activeSessionId={activeSessionId}
@@ -79,7 +79,7 @@ export function ChatPage() {
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="h-full bg-gradient-to-br from-white via-white to-blue-50/30 rounded-2xl shadow-xl border border-white/50 backdrop-blur-sm overflow-hidden">
+          <div className="h-full bg-surface rounded-xl shadow-soft border border-border overflow-hidden">
             <ChatWindow
               sessionId={activeSessionId}
               onSendMessage={handleSendMessage}

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { sanitizeInput } from "../utils/sanitizer.js";
+import { sanitizePlainText } from "../utils/sanitizer.js";
 
 export const sanitizeInputMiddleware = async (
     req: Request,
@@ -7,7 +7,7 @@ export const sanitizeInputMiddleware = async (
     next: NextFunction,
 ) => {
     if (req.body && req.body.content) {
-        req.body.content = sanitizeInput(req.body.content);
+        req.body.content = sanitizePlainText(req.body.content);
     }
     next();
 };

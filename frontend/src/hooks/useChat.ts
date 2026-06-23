@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatService } from '@/services/chat.service';
 import { toast } from 'sonner';
-import type { ChatMessage } from '@/types/api';
 
 export function useChatSessions() {
   const queryClient = useQueryClient();

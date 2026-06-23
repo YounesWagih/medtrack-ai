@@ -9,9 +9,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Pill } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
+import medTrackIcon from '@/assets/MedTrack-Ai-icon.png';
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const queryClient = useQueryClient();
 
@@ -21,9 +26,20 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-[280px] right-0 h-16 bg-surface/95 backdrop-blur-sm border-b border-border/50 shadow-sm z-40">
+    <header className="fixed top-0 left-0 md:left-[280px] right-0 h-16 bg-surface/95 backdrop-blur-sm border-b border-border/50 shadow-sm z-40">
       <div className="flex h-full items-center justify-between px-6">
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={onMenuClick}
+            aria-label="Open navigation"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <img src={medTrackIcon} alt="MedTrack AI" className="h-8 w-auto md:hidden" />
           <div className="h-8 w-1 bg-gradient-to-b from-primary to-secondary rounded-full"></div>
         </div>
 

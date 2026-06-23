@@ -7,14 +7,15 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { MedicineForm } from '@/components/medicine/MedicineForm';
 import { useMedicines } from '@/hooks/useMedicines';
-import { toast } from 'sonner';
 import type { Medicine, MedicineStatus } from '@/types/api';
 import type { MedicineInput } from '@/lib/validations';
+import { cleanMedicineInput } from '@/lib/utils';
 import {
   Pagination,
   PaginationContent,
@@ -31,6 +32,7 @@ export function MedicinesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+  const [deletingMedicine, setDeletingMedicine] = useState<Medicine | null>(null);
 
   const page = parseInt(searchParams.get('page') || '1');
 
@@ -52,47 +54,23 @@ export function MedicinesPage() {
   };
 
   const handleAdd = async (data: MedicineInput) => {
-    // Clean the data by removing empty optional fields
-    const cleaned: any = {
-      name: data.name,
-      expiryDate: data.expiryDate,
-    };
-    if (data.image && data.image.trim()) cleaned.image = data.image;
-    if (data.description && data.description.trim()) cleaned.description = data.description;
-    if (data.longDescription && data.longDescription.trim()) cleaned.longDescription = data.longDescription;
-    await create(cleaned);
+    await create(cleanMedicineInput(data));
     setIsAddOpen(false);
-    toast.success('Medicine added');
   };
 
   const handleEdit = async (data: MedicineInput) => {
-    console.log('handleEdit called with data:', data);
     if (!editingMedicine) {
-      console.log('No editingMedicine');
       return;
     }
-    // Clean the data by removing empty optional fields
-    const cleaned: any = {
-      name: data.name,
-      expiryDate: data.expiryDate,
-    };
-    if (data.image && data.image.trim()) cleaned.image = data.image;
-    if (data.description && data.description.trim()) cleaned.description = data.description;
-    if (data.longDescription && data.longDescription.trim()) cleaned.longDescription = data.longDescription;
-    console.log('Calling update with:', { id: editingMedicine.id, data: cleaned });
-    try {
-      await update({ id: editingMedicine.id, data: cleaned });
-      console.log('Update successful');
-      setEditingMedicine(null);
-    } catch (error) {
-      console.error('Update failed:', error);
-    }
+    await update({ id: editingMedicine.id, data: cleanMedicineInput(data) });
+    setEditingMedicine(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to remove this medicine?')) {
-      await remove(id);
-    }
+  const handleDelete = async () => {
+    if (!deletingMedicine) return;
+
+    await remove(deletingMedicine.id);
+    setDeletingMedicine(null);
   };
 
   return (
@@ -111,7 +89,10 @@ export function MedicinesPage() {
           medicines={medicines}
           isLoading={isLoading}
           onEdit={setEditingMedicine}
-          onDelete={handleDelete}
+          onDelete={(id) => {
+            const medicine = medicines.find((item) => item.id === id);
+            if (medicine) setDeletingMedicine(medicine);
+          }}
         />
 
         {totalPages > 1 && (
@@ -162,7 +143,7 @@ export function MedicinesPage() {
       </div>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Medicine</DialogTitle>
           </DialogHeader>
@@ -175,7 +156,7 @@ export function MedicinesPage() {
       </Dialog>
 
       <Dialog open={!!editingMedicine} onOpenChange={(open) => !open && setEditingMedicine(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Medicine</DialogTitle>
           </DialogHeader>
@@ -184,12 +165,34 @@ export function MedicinesPage() {
               defaultValues={{
                 name: editingMedicine.name,
                 expiryDate: new Date(editingMedicine.expiryDate).toISOString().split('T')[0],
+                description: editingMedicine.description || '',
+                longDescription: editingMedicine.longDescription || '',
+                image: editingMedicine.image || '',
               }}
               onSubmit={handleEdit}
               isLoading={isUpdating}
               submitLabel="Update Medicine"
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deletingMedicine} onOpenChange={(open) => !open && setDeletingMedicine(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Medicine</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove {deletingMedicine?.name} from your inventory?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setDeletingMedicine(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDelete} disabled={isRemoving}>
+              Remove
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Layout>

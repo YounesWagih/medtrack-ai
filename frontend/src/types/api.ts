@@ -68,7 +68,7 @@ export interface ExternalMedicineDetails {
   longDescription: string;
 }
 
-export interface UpdateMedicineDto extends CreateMedicineDto {}
+export type UpdateMedicineDto = CreateMedicineDto;
 
 export interface ListMedicineQuery {
   page?: number;
@@ -105,9 +105,7 @@ export interface ChatMessage {
   createdAt: string;
 }
 
-export interface CreateSessionDto {
-  // initially empty; could include provider or other options later
-}
+export type CreateSessionDto = Record<string, never>;
 
 export interface SendMessageDto {
   content: string;
