@@ -1,6 +1,7 @@
 import { MedicineStatus } from "@prisma/client";
 import { createCronLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
+import { notificationAttemptsTotal, recordMetric } from "../metrics/metrics.js";
 
 export interface NotificationPayload {
   userId: string;
@@ -13,6 +14,7 @@ export interface NotificationPayload {
 const cronLogger = createCronLogger();
 
 export async function sendExpiryNotification(payload: NotificationPayload): Promise<void> {
+  try {
   const context = requestContextStore.getStore();
   cronLogger.info(
     {
@@ -27,4 +29,9 @@ export async function sendExpiryNotification(payload: NotificationPayload): Prom
     },
     "notification expiry queued (stub)",
   );
+    recordMetric(() => notificationAttemptsTotal.inc({ type: "expiry", outcome: "queued_stub" }));
+  } catch (error) {
+    recordMetric(() => notificationAttemptsTotal.inc({ type: "expiry", outcome: "error" }));
+    throw error;
+  }
 }

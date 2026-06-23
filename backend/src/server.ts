@@ -4,6 +4,7 @@ import { connectRedis, disconnectRedis } from "./config/redis.js";
 import { connectDatabase } from "./db/db.js";
 import { startMedicineExpiryJob, stopMedicineExpiryJob } from "./jobs/medicine-expiry.job.js";
 import { createHttpLogger } from "./logging/logger.js";
+import { startMetricsServer, stopMetricsServer } from "./metrics/server.js";
 
 const logger = createHttpLogger();
 
@@ -12,6 +13,8 @@ await connectDatabase();
 
 // Connect to Redis before starting server
 await connectRedis();
+
+const metricsServer = await startMetricsServer();
 
 // Start medicine expiry cron job
 startMedicineExpiryJob();
@@ -28,22 +31,20 @@ const server = app.listen(env.PORT, () => {
 });
 
 // Graceful shutdown: stop cron job and disconnect Redis before exit
-process.on("SIGTERM", async () => {
-    logger.info({ event: "server.stopping", signal: "SIGTERM" }, "SIGTERM received: shutting down gracefully");
-    stopMedicineExpiryJob();
-    await disconnectRedis();
-    server.close(() => {
-        logger.info({ event: "server.closed" }, "Server closed");
-        process.exit(0);
-    });
-});
+let shuttingDown = false;
 
-process.on("SIGINT", async () => {
-    logger.info({ event: "server.stopping", signal: "SIGINT" }, "SIGINT received: shutting down gracefully");
+async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ event: "server.stopping", signal }, `${signal} received: shutting down gracefully`);
     stopMedicineExpiryJob();
+    await Promise.all([
+        stopMetricsServer(metricsServer),
+        new Promise<void>((resolve) => server.close(() => resolve())),
+    ]);
     await disconnectRedis();
-    server.close(() => {
-        logger.info({ event: "server.closed" }, "Server closed");
-        process.exit(0);
-    });
-});
+    logger.info({ event: "server.closed" }, "Server closed");
+}
+
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));

@@ -69,3 +69,4 @@ export const createDbLogger = () => createChildLogger({ logger: "db" });
 export const createCronLogger = () => createChildLogger({ logger: "cron" });
 export const createExternalApiLogger = () => createChildLogger({ logger: "external-api" });
 export const createErrorLogger = () => createChildLogger({ logger: "error" });
+export const createMetricsLogger = () => createChildLogger({ logger: "metrics" });

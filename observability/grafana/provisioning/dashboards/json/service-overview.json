@@ -1,0 +1,25 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [{ "title": "Explore backend logs", "type": "link", "url": "/explore?orgId=1&left=%5B%22now-1h%22,%22now%22,%22Loki%22,%7B%22expr%22:%22%7Bservice=%5C%22medtrack-backend%5C%22%7D%22%7D%5D" }],
+  "panels": [
+    { "type": "stat", "title": "Backend up", "id": 1, "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0}, "targets": [{"expr": "up{job=\"medtrack-backend\"}", "refId": "A"}], "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "DOWN"}, "1": {"text": "UP"}}}]}, "overrides": []} },
+    { "type": "stat", "title": "Requests / sec", "id": 2, "gridPos": {"h": 4, "w": 5, "x": 4, "y": 0}, "targets": [{"expr": "sum(rate(medtrack_http_requests_total[$__rate_interval]))", "refId": "A"}] },
+    { "type": "stat", "title": "5xx ratio", "id": 3, "gridPos": {"h": 4, "w": 5, "x": 9, "y": 0}, "targets": [{"expr": "sum(rate(medtrack_http_requests_total{status_code=~\"5..\"}[$__rate_interval])) / clamp_min(sum(rate(medtrack_http_requests_total[$__rate_interval])), 0.000001)", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []} },
+    { "type": "stat", "title": "In flight", "id": 4, "gridPos": {"h": 4, "w": 5, "x": 14, "y": 0}, "targets": [{"expr": "sum(medtrack_http_requests_in_flight)", "refId": "A"}] },
+    { "type": "stat", "title": "Resident memory", "id": 5, "gridPos": {"h": 4, "w": 5, "x": 19, "y": 0}, "targets": [{"expr": "medtrack_process_resident_memory_bytes", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []} },
+    { "type": "timeseries", "title": "HTTP latency percentiles", "id": 6, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}, "targets": [
+      {"expr": "histogram_quantile(0.50, sum by (le) (rate(medtrack_http_request_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p50", "refId": "A"},
+      {"expr": "histogram_quantile(0.95, sum by (le) (rate(medtrack_http_request_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p95", "refId": "B"},
+      {"expr": "histogram_quantile(0.99, sum by (le) (rate(medtrack_http_request_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "p99", "refId": "C"}
+    ], "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}, "links": [{"title": "Related logs", "url": "/explore?orgId=1&left=%5B%22now-1h%22,%22now%22,%22Loki%22,%7B%22expr%22:%22%7Bservice=%5C%22medtrack-backend%5C%22%7D%22%7D%5D"}] },
+    { "type": "timeseries", "title": "Requests by route and status", "id": 7, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}, "targets": [{"expr": "sum by (route, status_code) (rate(medtrack_http_requests_total[$__rate_interval]))", "legendFormat": "{{route}} {{status_code}}", "refId": "A"}], "links": [{"title": "Related logs", "url": "/explore?orgId=1&left=%5B%22now-1h%22,%22now%22,%22Loki%22,%7B%22expr%22:%22%7Bservice=%5C%22medtrack-backend%5C%22%7D%22%7D%5D"}] },
+    { "type": "timeseries", "title": "CPU and event-loop lag", "id": 8, "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12}, "targets": [
+      {"expr": "rate(medtrack_process_cpu_seconds_total[$__rate_interval])", "legendFormat": "CPU cores", "refId": "A"},
+      {"expr": "medtrack_nodejs_eventloop_lag_seconds", "legendFormat": "event-loop lag", "refId": "B"}
+    ] }
+  ],
+  "refresh": "15s", "schemaVersion": 41, "tags": ["medtrack", "service"], "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"}, "timezone": "browser", "title": "MedTrack Service Overview", "uid": "medtrack-service", "version": 1
+}
