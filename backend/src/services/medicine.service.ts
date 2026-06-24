@@ -118,6 +118,7 @@ export async function updateMedicine(
     medicineId: string,
     updatePayload: UpdateMedicineInput,
 ) {
+  try {
     const sanitizedPayload: UpdateMedicineInput = { ...updatePayload };
     if (typeof sanitizedPayload.description === "string") {
         sanitizedPayload.description = sanitizeTrustedHtml(sanitizedPayload.description);
