@@ -35,6 +35,11 @@ const envSchema = z.object({
     LOG_REDACTION_MODE: z.enum(["strict", "lenient"]).default("strict"),
     SERVICE_NAME: z.string().default("medtrack-backend"),
     SERVICE_VERSION: z.string().default("1.0.0"),
+    METRICS_ENABLED: z
+        .string()
+        .default("true")
+        .transform((value) => value.toLowerCase() === "true"),
+    METRICS_PORT: z.coerce.number().int().min(1).max(65535).default(9464),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

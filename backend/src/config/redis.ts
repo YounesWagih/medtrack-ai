@@ -1,6 +1,7 @@
 import { createClient, type RedisClientType } from "redis";
 import { env } from "./env.js";
 import { createRedisLogger } from "../logging/logger.js";
+import { recordMetric, redisAvailable } from "../metrics/metrics.js";
 
 const logger = createRedisLogger();
 const MAX_REDIS_RETRIES = 8;
@@ -20,6 +21,7 @@ const state: RedisState = {
 };
 
 function markRedisDegraded(): void {
+    recordMetric(() => redisAvailable.set(0));
     if (!state.degraded) {
         state.degraded = true;
         state.outageStartedAt = Date.now();
@@ -29,6 +31,7 @@ function markRedisDegraded(): void {
 }
 
 function markRedisRecovered(): void {
+    recordMetric(() => redisAvailable.set(1));
     const outageDuration =
         state.outageStartedAt != null
             ? Math.floor((Date.now() - state.outageStartedAt) / 1000)
@@ -98,6 +101,7 @@ redisClient.on("reconnecting", () => {
 });
 
 redisClient.on("end", () => {
+    recordMetric(() => redisAvailable.set(0));
     logger.warn({ event: "redis.connection_closed" }, "Redis connection closed");
 });
 
@@ -180,6 +184,7 @@ export async function checkRedisHealth(): Promise<boolean> {
 }
 
 export async function disconnectRedis(): Promise<void> {
+    recordMetric(() => redisAvailable.set(0));
     try {
         if (redisClient.isOpen) {
             await redisClient.quit();

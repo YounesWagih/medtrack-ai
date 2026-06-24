@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
 import { AuthenticatedRequest } from "./authenticate.js";
 import { redisClient } from "../config/redis.js";
+import { rateLimitRejectionsTotal, recordMetric } from "../metrics/metrics.js";
 
 const insuranceLimiter = new RateLimiterMemory({
     points: env.CHAT_RATE_LIMIT,
@@ -38,6 +39,7 @@ export const rateLimit = async (
         next();
     } catch (err: any) {
         if (err?.msBeforeNext !== undefined) {
+            recordMetric(() => rateLimitRejectionsTotal.inc({ limiter: "chat" }));
             const seconds = Math.ceil(err.msBeforeNext / 1000);
 
             throw new APIError(

@@ -6,6 +6,13 @@ import { env } from "../config/env.js";
 import { createCronLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
 import { randomUUID } from "node:crypto";
+import {
+  jobDuration,
+  jobItemsTotal,
+  jobLastSuccessTimestamp,
+  jobRunsTotal,
+  recordMetric,
+} from "../metrics/metrics.js";
 
 const cronLogger = createCronLogger();
 let expiryJob: ScheduledTask | null = null;
@@ -25,7 +32,11 @@ export function startMedicineExpiryJob(): void {
   );
 
   expiryJob = cron.schedule(cronExpression, async () => {
-    await runMedicineExpirySync();
+    try {
+      await runMedicineExpirySync();
+    } catch {
+      // runMedicineExpirySync records and logs the failure. Do not leak a rejected cron promise.
+    }
   }, {
     timezone,
   });
@@ -59,19 +70,35 @@ export async function runMedicineExpirySync(): Promise<void> {
     );
 
     for (const result of results) {
-      await requestContextStore.run(
-        { requestId, traceId, jobRunId },
-        () => sendExpiryNotification({ ...result }),
-      );
+      try {
+        await requestContextStore.run(
+          { requestId, traceId, jobRunId },
+          () => sendExpiryNotification({ ...result }),
+        );
+        recordMetric(() => jobItemsTotal.inc({ job: "medicine_expiry", item: "notification", outcome: "success" }));
+      } catch (error) {
+        recordMetric(() => jobItemsTotal.inc({ job: "medicine_expiry", item: "notification", outcome: "error" }));
+        throw error;
+      }
     }
 
     const duration = Date.now() - startTime;
+    recordMetric(() => {
+      jobRunsTotal.inc({ job: "medicine_expiry", outcome: "success" });
+      jobDuration.observe({ job: "medicine_expiry", outcome: "success" }, duration / 1000);
+      jobLastSuccessTimestamp.set({ job: "medicine_expiry" }, Date.now() / 1000);
+      jobItemsTotal.inc({ job: "medicine_expiry", item: "medicine_updated", outcome: "success" }, results.length);
+    });
     cronLogger.info(
       { event: "medicine_expiry_job.completed", jobRunId, updatedCount: results.length, durationMs: duration },
       `job completed in ${duration}ms`,
     );
   } catch (error) {
     const duration = Date.now() - startTime;
+    recordMetric(() => {
+      jobRunsTotal.inc({ job: "medicine_expiry", outcome: "error" });
+      jobDuration.observe({ job: "medicine_expiry", outcome: "error" }, duration / 1000);
+    });
     cronLogger.error(
       {
         event: "medicine_expiry_job.failed",

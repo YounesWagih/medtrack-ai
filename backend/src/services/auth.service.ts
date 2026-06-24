@@ -8,6 +8,7 @@ import { env } from "../config/env.js";
 import { createAuthLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
 import { hashEmail } from "../logging/emailHelpers.js";
+import { recordMetric, workflowOperationsTotal } from "../metrics/metrics.js";
 
 const authLogger = createAuthLogger();
 const TOKEN_EXPIRES_IN = "7d";
@@ -19,23 +20,24 @@ function generateToken(userId: string): string {
 }
 
 export async function register(data: RegisterInput) {
-    const hashedPassword = await argon2.hash(data.password);
-
-    let user;
     try {
-        user = await userRepo.create({
-            email: data.email,
-            name: data.name,
-            password: hashedPassword,
-        });
-    } catch (err) {
-        if (err instanceof EmailAlreadyExistsError) {
-            throw new APIError("Email already used", 409);
-        }
-        throw err;
-    }
+        const hashedPassword = await argon2.hash(data.password);
 
-    const token = generateToken(user.id);
+        let user;
+        try {
+            user = await userRepo.create({
+                email: data.email,
+                name: data.name,
+                password: hashedPassword,
+            });
+        } catch (err) {
+            if (err instanceof EmailAlreadyExistsError) {
+                throw new APIError("Email already used", 409);
+            }
+            throw err;
+        }
+
+        const token = generateToken(user.id);
 
     const context = requestContextStore.getStore();
     authLogger.info(
@@ -49,17 +51,20 @@ export async function register(data: RegisterInput) {
         "user registered",
     );
 
-    return {
-        user,
-        token,
-    };
+        recordMetric(() => workflowOperationsTotal.inc({ workflow: "auth", operation: "register", outcome: "success" }));
+        return { user, token };
+    } catch (error) {
+        recordMetric(() => workflowOperationsTotal.inc({ workflow: "auth", operation: "register", outcome: "error" }));
+        throw error;
+    }
 }
 
 export async function login(data: LoginInput) {
-    const user = await userRepo.findByemailWithPassword(data.email);
+    try {
+        const user = await userRepo.findByemailWithPassword(data.email);
 
-    const isPasswordValid = await argon2.verify(user.password, data.password);
-    if (!isPasswordValid) throw new APIError("Invalid credentials", 401);
+        const isPasswordValid = await argon2.verify(user.password, data.password);
+        if (!isPasswordValid) throw new APIError("Invalid credentials", 401);
 
     const token = generateToken(user.id);
 
@@ -75,14 +80,19 @@ export async function login(data: LoginInput) {
         "login succeeded",
     );
 
-    return {
-        user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt,
-        },
-        token,
-    };
+        recordMetric(() => workflowOperationsTotal.inc({ workflow: "auth", operation: "login", outcome: "success" }));
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+            },
+            token,
+        };
+    } catch (error) {
+        recordMetric(() => workflowOperationsTotal.inc({ workflow: "auth", operation: "login", outcome: "error" }));
+        throw error;
+    }
 }

@@ -12,6 +12,7 @@ import { PaginatedResponse } from "../types/index.js";
 import { env } from "../config/env.js";
 import { createMedicineLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
+import { recordMetric, workflowOperationsTotal } from "../metrics/metrics.js";
 import { sanitizeTrustedHtml } from "../utils/sanitizer.js";
 
 const medicineLogger = createMedicineLogger();
@@ -26,6 +27,7 @@ export async function createMedicine(
     userId: string,
     input: CreateMedicineInput,
 ) {
+  try {
     const status = computeStatus(input.expiryDate);
     const { image } = input;
     const description = input.description
@@ -57,7 +59,12 @@ export async function createMedicine(
         "medicine created",
     );
 
+    recordMetric(() => workflowOperationsTotal.inc({ workflow: "medicine", operation: "create", outcome: "success" }));
     return newMedicine;
+  } catch (error) {
+    recordMetric(() => workflowOperationsTotal.inc({ workflow: "medicine", operation: "create", outcome: "error" }));
+    throw error;
+  }
 }
 
 export async function listMedicines(
@@ -142,6 +149,7 @@ export async function updateMedicine(
                 },
                 "medicine updated with status transition",
             );
+            recordMetric(() => workflowOperationsTotal.inc({ workflow: "medicine", operation: "update", outcome: "success" }));
             return statusUpdated;
         }
     }
@@ -160,10 +168,16 @@ export async function updateMedicine(
         "medicine updated",
     );
 
+    recordMetric(() => workflowOperationsTotal.inc({ workflow: "medicine", operation: "update", outcome: "success" }));
     return updated;
+  } catch (error) {
+    recordMetric(() => workflowOperationsTotal.inc({ workflow: "medicine", operation: "update", outcome: "error" }));
+    throw error;
+  }
 }
 
 export async function removeMedicine(userId: string, medicineId: string) {
+  try {
     const updated = await medicineRepo.markRemoved(medicineId, userId);
     const context = requestContextStore.getStore();
     medicineLogger.info(
@@ -177,7 +191,12 @@ export async function removeMedicine(userId: string, medicineId: string) {
         },
         "medicine removed",
     );
+    recordMetric(() => workflowOperationsTotal.inc({ workflow: "medicine", operation: "remove", outcome: "success" }));
     return updated;
+  } catch (error) {
+    recordMetric(() => workflowOperationsTotal.inc({ workflow: "medicine", operation: "remove", outcome: "error" }));
+    throw error;
+  }
 }
 
 export async function syncMedicineStatuses() {

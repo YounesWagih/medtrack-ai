@@ -9,6 +9,7 @@ import { env } from "./config/env.js";
 import { checkRedisHealth } from "./config/redis.js";
 import { requestIdMiddleware } from "./middlewares/requestId.js";
 import { httpLoggerMiddleware } from "./middlewares/httpLogger.js";
+import { httpMetricsMiddleware } from "./middlewares/httpMetrics.js";
 
 const app: Express = express();
 
@@ -21,6 +22,7 @@ app.use(
 );
 
 app.use(requestIdMiddleware);
+app.use(httpMetricsMiddleware);
 app.use(httpLoggerMiddleware);
 
 app.use(express.json());

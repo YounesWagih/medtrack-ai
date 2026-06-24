@@ -1,0 +1,83 @@
+groups:
+  - name: medtrack-service
+    rules:
+      - alert: MedTrackBackendDown
+        expr: up{job="medtrack-backend"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: MedTrack backend metrics target is unavailable
+
+      - alert: MedTrackHighHttpErrorRate
+        expr: |
+          sum(rate(medtrack_http_requests_total{status_code=~"5.."}[5m]))
+          /
+          sum(rate(medtrack_http_requests_total[5m])) > 0.05
+          and sum(rate(medtrack_http_requests_total[5m])) > 0.1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: HTTP 5xx ratio is above 5 percent
+
+      - alert: MedTrackHighHttpLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(medtrack_http_request_duration_seconds_bucket[5m]))) > 1
+          and sum(rate(medtrack_http_requests_total[5m])) > 0.1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: HTTP p95 latency is above one second
+
+      - alert: MedTrackExternalDependencyFailures
+        expr: |
+          sum by (dependency) (rate(medtrack_external_requests_total{outcome!="success"}[10m]))
+          /
+          sum by (dependency) (rate(medtrack_external_requests_total[10m])) > 0.10
+          and sum by (dependency) (increase(medtrack_external_requests_total[10m])) >= 5
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: External dependency {{ $labels.dependency }} failure ratio is above 10 percent
+
+      - alert: MedTrackRedisUnavailable
+        expr: medtrack_redis_available == 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: Application Redis client is degraded
+
+      - alert: MedTrackExporterDown
+        expr: up{job=~"postgres|redis"} == 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: The {{ $labels.job }} exporter is unavailable
+
+      - alert: MedTrackExpiryJobFailed
+        expr: increase(medtrack_job_runs_total{job="medicine_expiry",outcome="error"}[15m]) > 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: Medicine expiry job failed
+
+      - alert: MedTrackExpiryJobStale
+        expr: time() - medtrack_job_last_success_timestamp_seconds{job="medicine_expiry"} > 93600
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: Medicine expiry job has not succeeded in 26 hours
+
+      - alert: MedTrackHighMemory
+        expr: medtrack_process_resident_memory_bytes > 536870912
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: Backend resident memory is above 512 MiB
+
+      - alert: MedTrackEventLoopLag
+        expr: medtrack_nodejs_eventloop_lag_seconds > 0.25
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: Backend event-loop lag is above 250 ms

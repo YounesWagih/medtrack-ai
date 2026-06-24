@@ -6,6 +6,7 @@ import {
     MedicineDetailsResult,
 } from "../schemas/external-api.schema.js";
 import { getSafeErrorFields } from "../utils/error-utils.js";
+import { cacheOperationsTotal, recordMetric } from "../metrics/metrics.js";
 
 const redisLogger = createRedisLogger();
 
@@ -55,6 +56,7 @@ export async function getMedicineDetailsFromCache(
                     },
                     "cache hit for medicine details",
                 );
+                recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "hit" }));
                 return parsed;
             } catch (parseErr) {
                 redisLogger.warn(
@@ -66,6 +68,7 @@ export async function getMedicineDetailsFromCache(
                     },
                     "corrupted cache entry, fetching from API",
                 );
+                recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "corrupt" }));
                 return null;
             }
         }
@@ -78,6 +81,7 @@ export async function getMedicineDetailsFromCache(
             },
             "cache miss for medicine details",
         );
+        recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "miss" }));
         return null;
     } catch (err) {
         redisLogger.warn(
@@ -89,6 +93,7 @@ export async function getMedicineDetailsFromCache(
             },
             "cache read failed",
         );
+        recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "failure" }));
         return null;
     }
 }
@@ -112,6 +117,7 @@ export async function setMedicineDetailsInCache(
             },
             "medicine details cached",
         );
+        recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "write", outcome: "success" }));
     } catch (err) {
         redisLogger.warn(
             {
@@ -122,6 +128,7 @@ export async function setMedicineDetailsInCache(
             },
             "cache write failed",
         );
+        recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "write", outcome: "failure" }));
     }
 }
 
@@ -138,6 +145,7 @@ export async function clearMedicineDetailsCacheEntry(
             },
             "medicine details cache entry cleared",
         );
+        recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "clear", outcome: "success" }));
         return result > 0;
     } catch (err) {
         redisLogger.warn(
@@ -149,6 +157,7 @@ export async function clearMedicineDetailsCacheEntry(
             },
             "cache clear failed",
         );
+        recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "clear", outcome: "failure" }));
         return false;
     }
 }

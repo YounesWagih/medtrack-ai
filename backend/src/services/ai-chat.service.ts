@@ -10,6 +10,14 @@ import { parseAIResponse } from "../utils/aiResponseParser.js";
 import { ChatMessageResponse } from "../types/index.js";
 import { createChatLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
+import {
+    chatMessagesTotal,
+    externalOutcome,
+    externalRequestDuration,
+    externalRequestsTotal,
+    recordMetric,
+    statusClass,
+} from "../metrics/metrics.js";
 
 const chatLogger = createChatLogger();
 const openrouter = new OpenRouterCore({
@@ -60,6 +68,7 @@ export async function sendMessage(
     }));
 
     const prompt = buildPrompt(userMessage, medicinesWithExpiry, history);
+    const externalStart = Date.now();
     try {
         const res = await chatSend(openrouter, {
             chatRequest: {
@@ -74,8 +83,19 @@ export async function sendMessage(
         });
 
         if (!res.ok) {
-            throw new APIError(String(res.error), 500);
+            const sdkError = res.error as { status?: number };
+            const outcome = sdkError?.status === 429 ? "rate_limited" : "error";
+            recordMetric(() => {
+                externalRequestsTotal.inc({ dependency: "openrouter", operation: "chat", outcome, status_class: statusClass(sdkError?.status) });
+                externalRequestDuration.observe({ dependency: "openrouter", operation: "chat", outcome }, (Date.now() - externalStart) / 1000);
+            });
+            throw new APIError(String(res.error), sdkError?.status ?? 500);
         }
+
+        recordMetric(() => {
+            externalRequestsTotal.inc({ dependency: "openrouter", operation: "chat", outcome: "success", status_class: "2xx" });
+            externalRequestDuration.observe({ dependency: "openrouter", operation: "chat", outcome: "success" }, (Date.now() - externalStart) / 1000);
+        });
 
         const chatResult = res.value;
         const responseText = chatResult.choices[0]?.message?.content || "";
@@ -87,6 +107,7 @@ export async function sendMessage(
         );
 
         const parsedResponse = parseAIResponse(responseText);
+        recordMetric(() => chatMessagesTotal.inc({ outcome: "success", model: env.MODEL_NAME, response_type: parsedResponse.type }));
         const durationMs = Date.now() - start;
         const context = requestContextStore.getStore();
         chatLogger.info(
@@ -113,6 +134,14 @@ export async function sendMessage(
 
         return result;
     } catch (error: any) {
+        const outcome = externalOutcome(error);
+        if (!(error instanceof APIError)) {
+            recordMetric(() => {
+                externalRequestsTotal.inc({ dependency: "openrouter", operation: "chat", outcome, status_class: statusClass(error?.status) });
+                externalRequestDuration.observe({ dependency: "openrouter", operation: "chat", outcome }, (Date.now() - externalStart) / 1000);
+            });
+        }
+        recordMetric(() => chatMessagesTotal.inc({ outcome, model: env.MODEL_NAME, response_type: "unknown" }));
         if (error.status === 429) {
             throw new APIError(
                 "Rate limit exceeded. Please try again later.",

@@ -7,6 +7,13 @@ import {
 import { createExternalApiLogger } from "../logging/logger.js";
 import { getCorrelationHeaders } from "../logging/propagation.js";
 import { getSafeAxiosErrorFields } from "../utils/error-utils.js";
+import {
+    externalOutcome,
+    externalRequestDuration,
+    externalRequestsTotal,
+    recordMetric,
+    statusClass,
+} from "../metrics/metrics.js";
 
 const externalApiLogger = createExternalApiLogger();
 const EXTERNAL_API_BASE = "https://api.alabdellatif-tarshouby.com/api/customer";
@@ -45,6 +52,10 @@ export async function searchExternalMedicines(
         );
 
         const durationMs = Date.now() - start;
+        recordMetric(() => {
+            externalRequestsTotal.inc({ dependency: "medicine_api", operation: "search", outcome: "success", status_class: statusClass(response.status) });
+            externalRequestDuration.observe({ dependency: "medicine_api", operation: "search", outcome: "success" }, durationMs / 1000);
+        });
 
         externalApiLogger.info(
             {
@@ -61,6 +72,11 @@ export async function searchExternalMedicines(
     } catch (error) {
         const durationMs = Date.now() - start;
         const safeFields = getSafeAxiosErrorFields(error);
+        const outcome = externalOutcome(error);
+        recordMetric(() => {
+            externalRequestsTotal.inc({ dependency: "medicine_api", operation: "search", outcome, status_class: statusClass(safeFields.statusCode) });
+            externalRequestDuration.observe({ dependency: "medicine_api", operation: "search", outcome }, durationMs / 1000);
+        });
 
         externalApiLogger.warn(
             {
@@ -93,6 +109,10 @@ export async function getExternalMedicineDetails(
 
         const durationMs = Date.now() - start;
         const product = response.data?.data?.product;
+        recordMetric(() => {
+            externalRequestsTotal.inc({ dependency: "medicine_api", operation: "details", outcome: "success", status_class: statusClass(response.status) });
+            externalRequestDuration.observe({ dependency: "medicine_api", operation: "details", outcome: "success" }, durationMs / 1000);
+        });
 
         externalApiLogger.info(
             {
@@ -110,6 +130,11 @@ export async function getExternalMedicineDetails(
     } catch (error) {
         const durationMs = Date.now() - start;
         const safeFields = getSafeAxiosErrorFields(error);
+        const outcome = externalOutcome(error);
+        recordMetric(() => {
+            externalRequestsTotal.inc({ dependency: "medicine_api", operation: "details", outcome, status_class: statusClass(safeFields.statusCode) });
+            externalRequestDuration.observe({ dependency: "medicine_api", operation: "details", outcome }, durationMs / 1000);
+        });
 
         externalApiLogger.warn(
             {

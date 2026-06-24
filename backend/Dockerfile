@@ -30,6 +30,6 @@ COPY prisma ./prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/dist ./dist
 
-EXPOSE 3000
+EXPOSE 3000 9464
 
 CMD ["node", "dist/server.js"]
