@@ -107,6 +107,8 @@ services:
   prometheus:
     image: prom/prometheus:v3.5.0
     container_name: medtrack-prometheus
+    ports:
+      - "9090:9090"
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
