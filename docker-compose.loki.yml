@@ -104,6 +104,26 @@ services:
     networks:
       - observability
 
+  fake-telemetry:
+    build:
+      context: ./observability/fake-telemetry
+    container_name: medtrack-fake-telemetry
+    profiles: ["fake-telemetry"]
+    environment:
+      FAKE_TELEMETRY_SCENARIO: ${FAKE_TELEMETRY_SCENARIO:-normal}
+      FAKE_TELEMETRY_LOGS_PER_SECOND: ${FAKE_TELEMETRY_LOGS_PER_SECOND:-2}
+      FAKE_TELEMETRY_METRICS_PORT: ${FAKE_TELEMETRY_METRICS_PORT:-9465}
+      FAKE_TELEMETRY_SERVICE_NAME: ${FAKE_TELEMETRY_SERVICE_NAME:-medtrack-backend}
+      FAKE_TELEMETRY_ENVIRONMENT: ${FAKE_TELEMETRY_ENVIRONMENT:-production}
+      FAKE_TELEMETRY_VERSION: ${FAKE_TELEMETRY_VERSION:-1.0.0}
+    expose:
+      - "9465"
+    labels:
+      logging.grafana.com/scrape: "true"
+      logging.grafana.com/service: medtrack-backend
+    networks:
+      - observability
+
   prometheus:
     image: prom/prometheus:v3.5.0
     container_name: medtrack-prometheus
