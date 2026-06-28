@@ -41,3 +41,21 @@ export async function connectDatabase(): Promise<void> {
         }
     }
 }
+
+export async function disconnectDatabase(): Promise<void> {
+    try {
+        await prisma.$disconnect();
+        logger.info({ event: "db.disconnected" }, "Database disconnected gracefully");
+    } catch (err) {
+        logger.warn(
+            {
+                event: "db.disconnect_error",
+                error: {
+                    name: err instanceof Error ? err.name : "UnknownError",
+                    message: err instanceof Error ? err.message : String(err),
+                },
+            },
+            "Database disconnect error",
+        );
+    }
+}

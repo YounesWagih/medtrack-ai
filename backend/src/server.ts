@@ -7,7 +7,7 @@ const [
     { default: app },
     { env },
     { connectRedis, disconnectRedis },
-    { connectDatabase },
+    { connectDatabase, disconnectDatabase },
     { startMedicineExpiryJob, stopMedicineExpiryJob },
     { createHttpLogger },
     { startMetricsServer, stopMetricsServer },
@@ -57,6 +57,7 @@ async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
         new Promise<void>((resolve) => server.close(() => resolve())),
     ]);
     await disconnectRedis();
+    await disconnectDatabase();
     await stopTracing();
     logger.info({ event: "server.closed" }, "Server closed");
 }
