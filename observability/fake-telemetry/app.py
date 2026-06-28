@@ -7,10 +7,17 @@ import signal
 import sys
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Callable
+from typing import Callable, Iterator
 
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, start_http_server
 
 
@@ -58,6 +65,8 @@ class Settings:
     service_name: str
     environment: str
     version: str
+    traces_enabled: bool
+    otlp_traces_endpoint: str
     seed: str
 
 
@@ -252,8 +261,17 @@ def read_settings() -> Settings:
         service_name=os.getenv("FAKE_TELEMETRY_SERVICE_NAME", "medtrack-backend"),
         environment=os.getenv("FAKE_TELEMETRY_ENVIRONMENT", "production"),
         version=os.getenv("FAKE_TELEMETRY_VERSION", "1.0.0"),
+        traces_enabled=read_bool("FAKE_TELEMETRY_TRACES_ENABLED", True),
+        otlp_traces_endpoint=os.getenv("FAKE_TELEMETRY_OTLP_TRACES_ENDPOINT", "http://alloy:4318/v1/traces"),
         seed=os.getenv("FAKE_TELEMETRY_RANDOM_SEED", "medtrack-fake-telemetry"),
     )
+
+
+def read_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def iso_now() -> str:
@@ -290,13 +308,74 @@ def latency_seconds(profile: ScenarioProfile, status_code: int) -> float:
     return min(max(base, 0.004), 9.8)
 
 
+def configure_tracing(settings: Settings) -> TracerProvider | None:
+    if not settings.traces_enabled:
+        return None
+
+    provider = TracerProvider(
+        resource=Resource.create(
+            {
+                "service.name": settings.service_name,
+                "service.version": settings.version,
+                "deployment.environment.name": settings.environment,
+                "telemetry.synthetic": True,
+                "telemetry.generator": "medtrack-fake-telemetry",
+            }
+        )
+    )
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=settings.otlp_traces_endpoint)))
+    trace.set_tracer_provider(provider)
+    return provider
+
+
+def get_tracer(settings: Settings):
+    return trace.get_tracer(settings.service_name, settings.version)
+
+
+@contextmanager
+def synthetic_span(
+    settings: Settings,
+    name: str,
+    duration_seconds: float,
+    attributes: dict[str, object],
+    kind: SpanKind = SpanKind.INTERNAL,
+    failed: bool = False,
+) -> Iterator[None]:
+    tracer = get_tracer(settings)
+    start_time = time.time_ns() - max(1, int(duration_seconds * 1_000_000_000))
+    span = tracer.start_span(
+        name,
+        kind=kind,
+        attributes={key: value for key, value in attributes.items() if value is not None},
+        start_time=start_time,
+    )
+    try:
+        with trace.use_span(span, end_on_exit=False):
+            if failed:
+                span.set_status(Status(StatusCode.ERROR))
+            yield
+    except Exception as error:
+        span.record_exception(error)
+        span.set_status(Status(StatusCode.ERROR, str(error)))
+        raise
+    finally:
+        span.end(end_time=time.time_ns())
+
+
 def request_context() -> dict[str, str]:
+    span_context = trace.get_current_span().get_span_context()
+    if span_context.is_valid:
+        trace_id = f"{span_context.trace_id:032x}"
+        span_id = f"{span_context.span_id:016x}"
+    else:
+        trace_id = uuid.uuid4().hex
+        span_id = uuid.uuid4().hex[:16]
+
     request_id = f"req_{uuid.uuid4().hex[:16]}"
-    trace_id = uuid.uuid4().hex
     return {
         "requestId": request_id,
         "traceId": trace_id,
-        "spanId": uuid.uuid4().hex[:16],
+        "spanId": span_id,
         "userId": f"user_{random.randint(1000, 9999)}",
     }
 
@@ -324,59 +403,102 @@ def record_http(settings: Settings, metrics: Metrics, profile: ScenarioProfile) 
 
     status_code = choose_status(profile)
     duration = latency_seconds(profile, status_code)
-    context = request_context()
 
-    metrics.http_requests.labels(method=method, route=route, status_code=str(status_code)).inc()
-    metrics.http_duration.labels(method=method, route=route, status_class=status_class(status_code)).observe(duration)
-    metrics.http_in_flight.labels(method=method).set(random.randint(0, max(2, profile.traffic_multiplier * 3)))
-
-    if status_code >= 500:
-        level = "error"
-    elif status_code >= 400:
-        level = "warn"
-    else:
-        level = "info"
-
-    emit_log(
+    with synthetic_span(
         settings,
-        "http",
-        "request.completed",
-        level,
-        f"{method} {route} completed with {status_code}",
-        **context,
-        route=route,
-        method=method,
-        path=path,
-        statusCode=status_code,
-        durationMs=round(duration * 1000, 2),
-    )
+        f"HTTP {method} {route}",
+        duration,
+        {
+            "http.request.method": method,
+            "http.route": route,
+            "url.path": path.split("?")[0],
+            "http.response.status_code": status_code,
+            "medtrack.scenario": profile.name,
+            "medtrack.synthetic": True,
+        },
+        kind=SpanKind.SERVER,
+        failed=status_code >= 500,
+    ):
+        context = request_context()
+
+        metrics.http_requests.labels(method=method, route=route, status_code=str(status_code)).inc()
+        metrics.http_duration.labels(method=method, route=route, status_class=status_class(status_code)).observe(duration)
+        metrics.http_in_flight.labels(method=method).set(random.randint(0, max(2, profile.traffic_multiplier * 3)))
+
+        if status_code >= 500:
+            level = "error"
+        elif status_code >= 400:
+            level = "warn"
+        else:
+            level = "info"
+
+        emit_log(
+            settings,
+            "http",
+            "request.completed",
+            level,
+            f"{method} {route} completed with {status_code}",
+            **context,
+            route=route,
+            method=method,
+            path=path,
+            statusCode=status_code,
+            durationMs=round(duration * 1000, 2),
+        )
 
 
 def record_workflow(settings: Settings, metrics: Metrics, profile: ScenarioProfile) -> None:
     workflow, operation = random.choice(WORKFLOWS)
     outcome = "error" if random.randint(1, 100) <= profile.http_server_error_weight else "success"
-    metrics.workflow_operations.labels(workflow=workflow, operation=operation, outcome=outcome).inc()
+    duration = random.uniform(0.02, 1.2) * profile.latency_multiplier
+    with synthetic_span(
+        settings,
+        f"{workflow}.{operation}",
+        duration,
+        {
+            "medtrack.workflow": workflow,
+            "medtrack.operation": operation,
+            "medtrack.outcome": outcome,
+            "medtrack.scenario": profile.name,
+        },
+        failed=outcome == "error",
+    ):
+        metrics.workflow_operations.labels(workflow=workflow, operation=operation, outcome=outcome).inc()
 
-    logger = workflow if workflow in {"auth", "medicine", "chat"} else "medicine"
-    level = "error" if outcome == "error" else "info"
-    event = f"{workflow}.{operation}_{'failed' if outcome == 'error' else 'completed'}"
-    message = f"{workflow} {operation} {'failed' if outcome == 'error' else 'completed'}"
-    emit_log(settings, logger, event, level, message, **request_context(), workflow=workflow, operation=operation, outcome=outcome)
+        logger = workflow if workflow in {"auth", "medicine", "chat"} else "medicine"
+        level = "error" if outcome == "error" else "info"
+        event = f"{workflow}.{operation}_{'failed' if outcome == 'error' else 'completed'}"
+        message = f"{workflow} {operation} {'failed' if outcome == 'error' else 'completed'}"
+        emit_log(settings, logger, event, level, message, **request_context(), workflow=workflow, operation=operation, outcome=outcome)
 
 
 def record_auth_attack(settings: Settings, metrics: Metrics) -> None:
-    metrics.rate_limit_rejections.labels(limiter="auth-login").inc(random.randint(1, 4))
-    emit_log(
+    status_code = random.choice([401, 429])
+    duration = random.uniform(0.01, 0.18)
+    with synthetic_span(
         settings,
-        "auth",
         "auth.login_failed",
-        "warn",
-        "Login failed for synthetic user hash",
-        **request_context(),
-        emailHash=f"sha256:{uuid.uuid4().hex}",
-        reason=random.choice(["invalid_credentials", "account_locked", "rate_limited"]),
-        statusCode=random.choice([401, 429]),
-    )
+        duration,
+        {
+            "http.request.method": "POST",
+            "http.route": "/api/auth/login",
+            "http.response.status_code": status_code,
+            "medtrack.security.event": "login_failed",
+        },
+        kind=SpanKind.SERVER,
+    ):
+        metrics.rate_limit_rejections.labels(limiter="auth-login").inc(random.randint(1, 4))
+        emit_log(
+            settings,
+            "auth",
+            "auth.login_failed",
+            "warn",
+            "Login failed for synthetic user hash",
+            **request_context(),
+            emailHash=f"sha256:{uuid.uuid4().hex}",
+            reason=random.choice(["invalid_credentials", "account_locked", "rate_limited"]),
+            statusCode=status_code,
+        )
 
 
 def record_cache(settings: Settings, metrics: Metrics, profile: ScenarioProfile) -> None:
@@ -386,18 +508,33 @@ def record_cache(settings: Settings, metrics: Metrics, profile: ScenarioProfile)
     else:
         outcome = random.choices(["success", "error"], weights=[92 if profile.redis_available else 35, 8 if profile.redis_available else 65], k=1)[0]
 
-    metrics.cache_operations.labels(namespace="medicine_details", operation=operation, outcome=outcome).inc()
-    if outcome == "error" or not profile.redis_available:
-        emit_log(
-            settings,
-            "redis",
-            "redis.cache_operation_failed",
-            "warn",
-            "Redis cache operation failed in fake telemetry scenario",
-            operation=operation,
-            namespace="medicine_details",
-            outcome=outcome,
-        )
+    with synthetic_span(
+        settings,
+        f"redis.cache_{operation}",
+        random.uniform(0.001, 0.08) * max(1.0, profile.latency_multiplier / 3),
+        {
+            "db.system.name": "redis",
+            "db.operation.name": operation,
+            "db.namespace": "medicine_details",
+            "medtrack.cache.outcome": outcome,
+            "medtrack.redis.available": bool(profile.redis_available),
+        },
+        kind=SpanKind.CLIENT,
+        failed=outcome == "error" or not profile.redis_available,
+    ):
+        metrics.cache_operations.labels(namespace="medicine_details", operation=operation, outcome=outcome).inc()
+        if outcome == "error" or not profile.redis_available:
+            emit_log(
+                settings,
+                "redis",
+                "redis.cache_operation_failed",
+                "warn",
+                "Redis cache operation failed in fake telemetry scenario",
+                **request_context(),
+                operation=operation,
+                namespace="medicine_details",
+                outcome=outcome,
+            )
 
 
 def record_dependency(settings: Settings, metrics: Metrics, profile: ScenarioProfile) -> None:
@@ -414,45 +551,77 @@ def record_dependency(settings: Settings, metrics: Metrics, profile: ScenarioPro
         level = "info"
         duration = random.uniform(0.04, 0.9) * profile.latency_multiplier
 
-    metrics.external_requests.labels(
-        dependency=dependency,
-        operation=operation,
-        outcome=outcome,
-        status_class=status_class(code),
-    ).inc()
-    metrics.external_duration.labels(dependency=dependency, operation=operation, outcome=outcome).observe(min(duration, 59.0))
-
-    emit_log(
+    with synthetic_span(
         settings,
-        "external-api",
         f"{dependency}.{operation}",
-        level,
-        f"{dependency} {operation} {outcome}",
-        **request_context(),
-        dependency=dependency,
-        operation=operation,
-        outcome=outcome,
-        statusCode=code,
-        durationMs=round(duration * 1000, 2),
-    )
+        min(duration, 59.0),
+        {
+            "server.address": dependency,
+            "rpc.service": dependency,
+            "rpc.method": operation,
+            "http.response.status_code": code,
+            "medtrack.dependency": dependency,
+            "medtrack.operation": operation,
+            "medtrack.outcome": outcome,
+            "medtrack.scenario": profile.name,
+        },
+        kind=SpanKind.CLIENT,
+        failed=failed,
+    ):
+        metrics.external_requests.labels(
+            dependency=dependency,
+            operation=operation,
+            outcome=outcome,
+            status_class=status_class(code),
+        ).inc()
+        metrics.external_duration.labels(dependency=dependency, operation=operation, outcome=outcome).observe(min(duration, 59.0))
+
+        emit_log(
+            settings,
+            "external-api",
+            f"{dependency}.{operation}",
+            level,
+            f"{dependency} {operation} {outcome}",
+            **request_context(),
+            dependency=dependency,
+            operation=operation,
+            outcome=outcome,
+            statusCode=code,
+            durationMs=round(duration * 1000, 2),
+        )
 
 
 def record_chat(settings: Settings, metrics: Metrics, profile: ScenarioProfile) -> None:
     failed = random.randint(1, 100) <= profile.chat_failure_weight
     outcome = random.choice(["timeout", "malformed_response", "error"]) if failed else "success"
     response_type = random.choice(["answer", "medicine_recommendation", "safety_warning"])
-    metrics.chat_messages.labels(outcome=outcome, model="openrouter/fake-medtrack", response_type=response_type).inc()
-    emit_log(
+    duration = random.uniform(0.35, 7.5) * max(1.0, profile.latency_multiplier / 2)
+    with synthetic_span(
         settings,
-        "chat",
-        "chat.message_processed" if outcome == "success" else "chat.message_failed",
-        "info" if outcome == "success" else "warn",
-        f"AI chat message {outcome}",
-        **request_context(),
-        outcome=outcome,
-        model="openrouter/fake-medtrack",
-        responseType=response_type,
-    )
+        "chat.message_processed",
+        duration,
+        {
+            "gen_ai.system": "openrouter",
+            "gen_ai.request.model": "openrouter/fake-medtrack",
+            "medtrack.chat.response_type": response_type,
+            "medtrack.outcome": outcome,
+            "medtrack.scenario": profile.name,
+        },
+        kind=SpanKind.CLIENT,
+        failed=failed,
+    ):
+        metrics.chat_messages.labels(outcome=outcome, model="openrouter/fake-medtrack", response_type=response_type).inc()
+        emit_log(
+            settings,
+            "chat",
+            "chat.message_processed" if outcome == "success" else "chat.message_failed",
+            "info" if outcome == "success" else "warn",
+            f"AI chat message {outcome}",
+            **request_context(),
+            outcome=outcome,
+            model="openrouter/fake-medtrack",
+            responseType=response_type,
+        )
 
 
 def record_job(settings: Settings, metrics: Metrics, profile: ScenarioProfile) -> None:
@@ -460,71 +629,129 @@ def record_job(settings: Settings, metrics: Metrics, profile: ScenarioProfile) -
     outcome = "error" if failed else "success"
     duration = random.uniform(1.5, 45.0) * (2.0 if failed else 1.0)
 
-    metrics.job_runs.labels(job="medicine_expiry", outcome=outcome).inc()
-    metrics.job_duration.labels(job="medicine_expiry", outcome=outcome).observe(duration)
-    metrics.job_items.labels(
-        job="medicine_expiry",
-        item="medicine_updated",
-        outcome="error" if failed else "success",
-    ).inc(random.randint(0 if failed else 3, 24))
-
-    if not failed:
-        metrics.job_last_success.labels(job="medicine_expiry").set(time.time())
-
-    emit_log(
+    with synthetic_span(
         settings,
-        "cron",
-        "medicine_expiry_job.failed" if failed else "medicine_expiry_job.completed",
-        "error" if failed else "info",
-        "Medicine expiry job failed" if failed else "Medicine expiry job completed",
-        jobRunId=f"job_{uuid.uuid4().hex[:12]}",
-        outcome=outcome,
-        durationMs=round(duration * 1000, 2),
-    )
+        "medicine_expiry_job.run",
+        duration,
+        {
+            "job.name": "medicine_expiry",
+            "medtrack.outcome": outcome,
+            "medtrack.scenario": profile.name,
+        },
+        failed=failed,
+    ):
+        metrics.job_runs.labels(job="medicine_expiry", outcome=outcome).inc()
+        metrics.job_duration.labels(job="medicine_expiry", outcome=outcome).observe(duration)
+        metrics.job_items.labels(
+            job="medicine_expiry",
+            item="medicine_updated",
+            outcome="error" if failed else "success",
+        ).inc(random.randint(0 if failed else 3, 24))
 
-    notification_outcome = "failed" if failed or random.randint(1, 100) <= profile.job_failure_weight else "sent"
-    metrics.notification_attempts.labels(type="medicine_expiry", outcome=notification_outcome).inc(random.randint(1, 8))
-    if notification_outcome == "failed":
+        if not failed:
+            metrics.job_last_success.labels(job="medicine_expiry").set(time.time())
+
         emit_log(
             settings,
             "cron",
-            "notification.failed",
-            "warn",
-            "Medicine expiry notification failed",
-            notificationType="medicine_expiry",
-            outcome=notification_outcome,
+            "medicine_expiry_job.failed" if failed else "medicine_expiry_job.completed",
+            "error" if failed else "info",
+            "Medicine expiry job failed" if failed else "Medicine expiry job completed",
+            **request_context(),
+            jobRunId=f"job_{uuid.uuid4().hex[:12]}",
+            outcome=outcome,
+            durationMs=round(duration * 1000, 2),
         )
+
+        notification_outcome = "failed" if failed or random.randint(1, 100) <= profile.job_failure_weight else "sent"
+        metrics.notification_attempts.labels(type="medicine_expiry", outcome=notification_outcome).inc(random.randint(1, 8))
+        if notification_outcome == "failed":
+            with synthetic_span(
+                settings,
+                "notification.medicine_expiry",
+                random.uniform(0.08, 2.5),
+                {
+                    "messaging.system": "smtp",
+                    "messaging.operation.name": "send",
+                    "notification.type": "medicine_expiry",
+                    "medtrack.outcome": notification_outcome,
+                },
+                kind=SpanKind.CLIENT,
+                failed=True,
+            ):
+                emit_log(
+                    settings,
+                    "cron",
+                    "notification.failed",
+                    "warn",
+                    "Medicine expiry notification failed",
+                    **request_context(),
+                    notificationType="medicine_expiry",
+                    outcome=notification_outcome,
+                )
 
 
 def record_db_pressure(settings: Settings, profile: ScenarioProfile) -> None:
     if profile.name != "slow_database" and random.randint(1, 100) > profile.http_server_error_weight:
         return
     duration = random.uniform(750, 6500) * max(1.0, profile.latency_multiplier / 3)
-    emit_log(
+    query_name = random.choice(["medicine.findMany", "user.findUnique", "chatSession.create", "medicine.update"])
+    event = random.choice(["db.query_slow", "db.connection_timeout", "db.transaction_retry"])
+    with synthetic_span(
         settings,
-        "db",
-        random.choice(["db.query_slow", "db.connection_timeout", "db.transaction_retry"]),
-        "warn" if duration < 5000 else "error",
-        "Database operation exceeded expected latency",
-        queryName=random.choice(["medicine.findMany", "user.findUnique", "chatSession.create", "medicine.update"]),
-        durationMs=round(duration, 2),
-    )
+        query_name,
+        duration / 1000,
+        {
+            "db.system.name": "postgresql",
+            "db.operation.name": query_name.split(".")[-1],
+            "db.collection.name": query_name.split(".")[0],
+            "medtrack.db.event": event,
+            "medtrack.scenario": profile.name,
+        },
+        kind=SpanKind.CLIENT,
+        failed=duration >= 5000,
+    ):
+        emit_log(
+            settings,
+            "db",
+            event,
+            "warn" if duration < 5000 else "error",
+            "Database operation exceeded expected latency",
+            **request_context(),
+            queryName=query_name,
+            durationMs=round(duration, 2),
+        )
 
 
 def record_global_exception(settings: Settings, profile: ScenarioProfile) -> None:
     if random.randint(1, 100) > max(2, profile.http_server_error_weight // 2):
         return
-    emit_log(
+    error_type = random.choice(["PrismaClientKnownRequestError", "ExternalDependencyError", "ValidationBoundaryError"])
+    route = random.choice([route for _, route, _ in HTTP_ROUTES])
+    with synthetic_span(
         settings,
-        "error",
-        "request.unhandled_exception",
-        "error",
-        "Unhandled synthetic exception captured by global handler",
-        **request_context(),
-        errorType=random.choice(["PrismaClientKnownRequestError", "ExternalDependencyError", "ValidationBoundaryError"]),
-        statusCode=500,
-        route=random.choice([route for _, route, _ in HTTP_ROUTES]),
-    )
+        f"HTTP failed {route}",
+        random.uniform(0.05, 3.0) * profile.latency_multiplier,
+        {
+            "http.route": route,
+            "http.response.status_code": 500,
+            "exception.type": error_type,
+            "medtrack.scenario": profile.name,
+        },
+        kind=SpanKind.SERVER,
+        failed=True,
+    ):
+        emit_log(
+            settings,
+            "error",
+            "request.unhandled_exception",
+            "error",
+            "Unhandled synthetic exception captured by global handler",
+            **request_context(),
+            errorType=error_type,
+            statusCode=500,
+            route=route,
+        )
 
 
 def update_runtime_gauges(metrics: Metrics, profile: ScenarioProfile) -> None:
@@ -577,6 +804,8 @@ def run(settings: Settings, metrics: Metrics) -> None:
         scenario=settings.scenario,
         metricsPort=settings.metrics_port,
         logsPerSecond=settings.logs_per_second,
+        tracesEnabled=settings.traces_enabled,
+        otlpTracesEndpoint=settings.otlp_traces_endpoint if settings.traces_enabled else None,
     )
 
     while not stop:
@@ -614,6 +843,7 @@ def run(settings: Settings, metrics: Metrics) -> None:
 if __name__ == "__main__":
     settings = read_settings()
     random.seed(settings.seed)
+    trace_provider = configure_tracing(settings)
     try:
         run(settings, Metrics())
     except Exception as error:
@@ -627,3 +857,6 @@ if __name__ == "__main__":
             error=str(error),
         )
         sys.exit(1)
+    finally:
+        if trace_provider:
+            trace_provider.shutdown()

@@ -121,11 +121,16 @@ services:
       FAKE_TELEMETRY_SERVICE_NAME: ${FAKE_TELEMETRY_SERVICE_NAME:-medtrack-backend}
       FAKE_TELEMETRY_ENVIRONMENT: ${FAKE_TELEMETRY_ENVIRONMENT:-production}
       FAKE_TELEMETRY_VERSION: ${FAKE_TELEMETRY_VERSION:-1.0.0}
+      FAKE_TELEMETRY_TRACES_ENABLED: ${FAKE_TELEMETRY_TRACES_ENABLED:-true}
+      FAKE_TELEMETRY_OTLP_TRACES_ENDPOINT: ${FAKE_TELEMETRY_OTLP_TRACES_ENDPOINT:-http://alloy:4318/v1/traces}
     expose:
       - "9465"
     labels:
       logging.grafana.com/scrape: "true"
       logging.grafana.com/service: medtrack-backend
+    depends_on:
+      alloy:
+        condition: service_started
     networks:
       - observability
 

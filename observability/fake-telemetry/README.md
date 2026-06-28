@@ -1,6 +1,6 @@
 # MedTrack Fake Telemetry
 
-Standalone Python generator for local observability testing. It emits MedTrack-shaped JSON logs to stdout for Alloy/Loki and exposes Prometheus metrics on `/metrics`.
+Standalone Python generator for local observability testing. It emits MedTrack-shaped JSON logs to stdout for Alloy/Loki, exposes Prometheus metrics on `/metrics`, and exports synthetic OpenTelemetry traces to Alloy/Tempo.
 
 ## Run
 
@@ -9,6 +9,10 @@ docker compose -f docker-compose.loki.yml --profile fake-telemetry up --build
 ```
 
 The generator is disabled unless the `fake-telemetry` profile is enabled.
+
+## View traces
+
+Open Grafana at `http://localhost:3001`, go to Explore, select the Tempo datasource, and search for `service.name = medtrack-backend`. Logs in Loki also include matching `traceId` values, so the configured derived field opens the same trace in Tempo.
 
 ## Scenarios
 
@@ -55,6 +59,8 @@ docker compose -f docker-compose.loki.yml --profile fake-telemetry up --build
 - `FAKE_TELEMETRY_SERVICE_NAME`: default `medtrack-backend`.
 - `FAKE_TELEMETRY_ENVIRONMENT`: default `production`.
 - `FAKE_TELEMETRY_VERSION`: default `1.0.0`.
+- `FAKE_TELEMETRY_TRACES_ENABLED`: default `true`.
+- `FAKE_TELEMETRY_OTLP_TRACES_ENDPOINT`: default `http://alloy:4318/v1/traces`.
 - `FAKE_TELEMETRY_RANDOM_SEED`: default `medtrack-fake-telemetry`.
 
-The default service name intentionally matches the backend so existing Grafana dashboards and Loki links light up without edits.
+The default service name intentionally matches the backend so existing Grafana dashboards, Loki derived trace links, and Tempo search light up without edits.
