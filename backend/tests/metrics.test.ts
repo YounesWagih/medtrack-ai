@@ -55,6 +55,7 @@ test("status classes and external failure outcomes are bounded", () => {
 
 test("disabled metrics mode starts no listener", async () => {
     process.env.JWT_SECRET = "test-secret-that-is-at-least-thirty-two-characters";
+    process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
     process.env.OPENROUTER_API_KEY = "test-key";
     process.env.MODEL_NAME = "test-model";
     process.env.METRICS_ENABLED = "false";

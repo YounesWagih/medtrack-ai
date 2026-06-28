@@ -3,6 +3,7 @@ import test from "node:test";
 import { ChatMessageRole } from "@prisma/client";
 
 process.env.JWT_SECRET = "test-secret-that-is-at-least-thirty-two-characters";
+process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
 process.env.OPENROUTER_API_KEY = "test-key";
 process.env.MODEL_NAME = "test-model";
 

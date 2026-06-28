@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import jwt from "jsonwebtoken";
 
 process.env.JWT_SECRET = "test-secret-that-is-at-least-thirty-two-characters";
+process.env.JWT_EXPIRES_IN = "1h";
+process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
 process.env.OPENROUTER_API_KEY = "test-key";
 process.env.MODEL_NAME = "test-model";
 
 const { APIError } = await import("../src/errors/APIError.js");
 const { ResourceNotFoundError } = await import("../src/errors/DomainError.js");
-const { loginWithDependencies } = await import("../src/services/auth.service.js");
+const { generateToken, loginWithDependencies } = await import("../src/services/auth.service.js");
 
 const loginInput = {
     email: "user@example.com",
@@ -74,4 +77,12 @@ test("login returns sanitized user and token for valid credentials", async () =>
         },
         token: "token-for-user-1",
     });
+});
+
+test("generateToken uses JWT_EXPIRES_IN from env", () => {
+    const token = generateToken("user-1");
+    const decoded = jwt.decode(token) as { exp: number; iat: number; userId: string };
+
+    assert.equal(decoded.userId, "user-1");
+    assert.equal(decoded.exp - decoded.iat, 60 * 60);
 });

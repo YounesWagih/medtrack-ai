@@ -7,6 +7,7 @@ import {
 } from "../errors/DomainError.js";
 import argon2 from "argon2";
 import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { createAuthLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
@@ -14,12 +15,11 @@ import { hashEmail } from "../logging/emailHelpers.js";
 import { recordMetric, workflowOperationsTotal } from "../metrics/metrics.js";
 
 const authLogger = createAuthLogger();
-const TOKEN_EXPIRES_IN = "7d";
 const INVALID_CREDENTIALS_MESSAGE = "Invalid credentials";
 
-function generateToken(userId: string): string {
+export function generateToken(userId: string): string {
     return jwt.sign({ userId }, env.JWT_SECRET, {
-        expiresIn: TOKEN_EXPIRES_IN,
+        expiresIn: env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
     });
 }
 
