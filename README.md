@@ -96,6 +96,8 @@ I wanted to understand the full picture:
 
 For example, Prometheus creates time series for each variation of metric labels. That means unbounded labels can quietly create huge storage problems. Learning details like that changed how I think about metrics.
 
+![MedTrack AI observability flow](docs/diagrams/observability-flow.png)
+
 ### Observability Stack
 
 The local stack runs through Docker Compose:

@@ -5,3 +5,5 @@ backend/dist/
 /backend/src/generated/prisma
 .kilo/
 plans/
+
+docs/diagrams/observability-flow.excalidraw
