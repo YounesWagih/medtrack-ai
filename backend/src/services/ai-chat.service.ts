@@ -7,7 +7,14 @@ import { APIError } from "../errors/APIError.js";
 import * as chatRepo from "../repositories/chat.repository.js";
 import * as medicineRepo from "../repositories/medicine.repository.js";
 import { buildPrompt } from "../utils/promptBuilder.js";
-import { parseAIResponse } from "../utils/aiResponseParser.js";
+import {
+    parseAIResponse,
+    stripAIResponseMetadata,
+} from "../utils/aiResponseParser.js";
+import {
+    buildSafetyQuestionsMessage,
+    needsSafetyQuestions,
+} from "../utils/medicalSafetyGate.js";
 import { ChatMessageResponse } from "../types/index.js";
 import { createChatLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
@@ -55,6 +62,29 @@ export async function sendMessage(
     await chatRepo.addMessage(sessionId, ChatMessageRole.USER, userMessage);
 
     const history = await chatRepo.findMessagesBySession(sessionId);
+    const previousHistory = history.slice(0, -1);
+
+    if (needsSafetyQuestions(userMessage, previousHistory)) {
+        const safetyMessage = buildSafetyQuestionsMessage(userMessage);
+        await chatRepo.addMessage(
+            sessionId,
+            ChatMessageRole.ASSISTANT,
+            safetyMessage,
+        );
+
+        const parsedResponse = {
+            type: "text",
+            content: safetyMessage,
+            extractedMedicineNames: [],
+        } satisfies ChatMessageResponse["response"];
+
+        recordMetric(() => chatMessagesTotal.inc({ outcome: "success", model: env.MODEL_NAME, response_type: parsedResponse.type }));
+
+        return {
+            sessionId,
+            response: parsedResponse,
+        };
+    }
 
     const medicines = await medicineRepo.findManyByUser(userId, {
         filters: {},
@@ -115,14 +145,15 @@ export async function sendMessage(
 
         const chatResult = res.value;
         const responseText = chatResult.choices[0]?.message?.content || "";
+        const parsedResponse = parseAIResponse(responseText);
+        const displayResponseText = stripAIResponseMetadata(responseText);
 
         await chatRepo.addMessage(
             sessionId,
             ChatMessageRole.ASSISTANT,
-            responseText,
+            displayResponseText,
         );
 
-        const parsedResponse = parseAIResponse(responseText);
         recordMetric(() => chatMessagesTotal.inc({ outcome: "success", model: env.MODEL_NAME, response_type: parsedResponse.type }));
         const durationMs = Date.now() - start;
         const context = requestContextStore.getStore();

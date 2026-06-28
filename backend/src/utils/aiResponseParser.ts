@@ -24,7 +24,6 @@ export const parseAIResponse = (rawResponse: string): ChatResponseData => {
     let type: "recommendation" | "text" = "text";
     let content = "";
     let medicines: ChatRecommendationMedicine[] = [];
-    let extractedMedicineNames: string[] = [];
     let currentMedicine: Partial<ChatRecommendationMedicine> | null = null;
     let inMedicineBlock = false;
     let currentField: keyof ChatRecommendationMedicine | null = null;
@@ -32,24 +31,18 @@ export const parseAIResponse = (rawResponse: string): ChatResponseData => {
     for (const rawLine of lines) {
         const line = rawLine.trim();
 
-        if (line.startsWith("[TYPE:RECOMMENDATION]")) {
+        if (/^\[TYPE:RECOMMENDATION\]/i.test(line)) {
             type = "recommendation";
             inMedicineBlock = true;
             continue;
         }
 
-        if (line.startsWith("[TYPE:Text]")) {
+        if (/^\[TYPE:TEXT\]/i.test(line)) {
             type = "text";
             continue;
         }
 
-        if (line.startsWith("MEDICINE_NAMES:")) {
-            const namesPart = line.replace("MEDICINE_NAMES:", "").trim();
-            if (namesPart !== "none") {
-                extractedMedicineNames = namesPart
-                    .split(",")
-                    .map((n) => n.trim());
-            }
+        if (/^MEDICINE_NAMES:/i.test(line)) {
             continue;
         }
 
@@ -112,6 +105,20 @@ export const parseAIResponse = (rawResponse: string): ChatResponseData => {
         type,
         content,
         medicines: type === "recommendation" ? medicines : undefined,
-        extractedMedicineNames: type === "recommendation" ? extractedMedicineNames : [],
+        extractedMedicineNames: [],
     };
+};
+
+export const stripAIResponseMetadata = (rawResponse: string): string => {
+    if (!rawResponse) return "";
+
+    return rawResponse
+        .split("\n")
+        .filter((rawLine) => {
+            const line = rawLine.trim();
+            return !/^\[TYPE:(RECOMMENDATION|TEXT)\]/i.test(line)
+                && !/^MEDICINE_NAMES:/i.test(line);
+        })
+        .join("\n")
+        .trim();
 };

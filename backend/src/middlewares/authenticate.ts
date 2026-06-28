@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
 import { setUserId } from "../logging/context.js";
+import * as userRepo from "../repositories/user.repository.js";
+import { ResourceNotFoundError } from "../errors/DomainError.js";
 
 export interface AuthenticatedRequest extends Request {
     user?: {
@@ -49,6 +51,15 @@ export const authenticate = async (
     //TODO: make separete jwt service and import the function from it
     if (!decoded.userId) {
         throw new APIError("Invalid token: missing userId", 401);
+    }
+
+    try {
+        await userRepo.findById(decoded.userId);
+    } catch (error) {
+        if (error instanceof ResourceNotFoundError) {
+            throw new APIError("Session user no longer exists. Please log in again.", 401);
+        }
+        throw error;
     }
 
     // Attach userId to request

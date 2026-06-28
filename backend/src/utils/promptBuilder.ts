@@ -68,26 +68,15 @@ medicines (one or more, use exact names from list above):
 notes: Any additional notes or warnings (e.g., disclaimer)
 
 TEXT FORMAT (when starting with [TYPE:TEXT]):
-[TYPE:Text]
+[TYPE:TEXT]
 Your response content here...
 
 IMPORTANT:
 - Use EXACT medicine names as they appear in the user's medicine list above
-- If recommending a medicine NOT in user's list, use [TYPE:Text] and inform them
+- If recommending a medicine NOT in user's list, use [TYPE:TEXT] and inform them
 - Never diagnose or prescribe - only recommend from medicines they already have
-- Write your entire response in the SAME LANGUAGE as the user's query EXCEPT the [TYPE:...] marker and MEDICINE_NAMES line (keep those in English)
-- change (name, recommendation, dosage, frequency) to same language as user query ex: name change to (الاسم)
-- At the END of your response, on a new line, write: MEDICINE_NAMES: name1, name2, ... (comma-separated exact medicine names from your response, or "none" if none)
-
-SAFETY QUESTIONS:
-Before providing any medicine recommendation, you MUST ask the user ALL of the following questions at once, then wait for their answers before proceeding:
-1. What is your age?
-2. Do you have any allergies to medications?
-3. Do you have any medical conditions (e.g., liver/kidney problems, heart disease, diabetes)?
-4. Are you currently taking any other medications?
-5. Are you pregnant or breastfeeding?
-
-Ask all questions together in a clear list format, then wait for the user's complete response before giving any dosage or recommendation.`;
+- Write human-facing text in the SAME LANGUAGE as the user's query.
+- Keep all response markers and structural labels exactly as shown in English: [TYPE:...], medicines, name, recommendation, dosage, frequency, notes.`;
 
     return prompt;
 };
