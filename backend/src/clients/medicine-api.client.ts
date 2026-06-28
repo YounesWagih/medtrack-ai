@@ -4,6 +4,7 @@ import {
     ExternalMedicineDetails,
     ExternalMedicineSearchItem,
 } from "../schemas/external-api.schema.js";
+import { APIError } from "../errors/APIError.js";
 import { createExternalApiLogger } from "../logging/logger.js";
 import { getCorrelationHeaders } from "../logging/propagation.js";
 import { getSafeAxiosErrorFields } from "../utils/error-utils.js";
@@ -24,6 +25,18 @@ const externalApiClient = axios.create({
     baseURL: EXTERNAL_API_BASE,
     timeout: REQUEST_TIMEOUT,
 });
+
+export function getUpstreamFailureStatus(errorFields: { code?: string; statusCode?: number }): number {
+    if (errorFields.code === "ECONNABORTED" || errorFields.code === "ETIMEDOUT") {
+        return 504;
+    }
+
+    if (errorFields.statusCode === 429 || (errorFields.statusCode && errorFields.statusCode >= 500)) {
+        return 503;
+    }
+
+    return 502;
+}
 
 externalApiClient.interceptors.request.use((config) => {
     const correlationHeaders = getCorrelationHeaders();
@@ -77,7 +90,12 @@ export async function searchExternalMedicines(
             "medicine search request completed",
         );
 
-        return response.data?.data?.products ?? [];
+        const products = response.data?.data?.products;
+        if (!Array.isArray(products)) {
+            throw new APIError("Medicine search service returned an invalid response", 502);
+        }
+
+        return products;
     } catch (error) {
         const durationMs = Date.now() - start;
         const safeFields = getSafeAxiosErrorFields(error);
@@ -100,7 +118,14 @@ export async function searchExternalMedicines(
             "medicine search request failed",
         );
 
-        return [];
+        if (error instanceof APIError) {
+            throw error;
+        }
+
+        throw new APIError(
+            "Medicine search service unavailable",
+            getUpstreamFailureStatus(safeFields),
+        );
     }
 }
 
@@ -166,6 +191,13 @@ export async function getExternalMedicineDetails(
             "medicine details request failed",
         );
 
-        return null;
+        if (safeFields.statusCode === 404) {
+            return null;
+        }
+
+        throw new APIError(
+            "Medicine details service unavailable",
+            getUpstreamFailureStatus(safeFields),
+        );
     }
 }
