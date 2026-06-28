@@ -120,8 +120,12 @@ export async function countByUser(
 
 export async function findByIdForUser(id: string, userId: string) {
     try {
-        return await prisma.medicine.findUniqueOrThrow({
-            where: { id, userId },
+        return await prisma.medicine.findFirstOrThrow({
+            where: {
+                id,
+                userId,
+                status: { not: MedicineStatus.REMOVED },
+            },
             select: MEDICINE_SELECT,
         });
     } catch (err) {
@@ -138,7 +142,11 @@ export async function updateForUser(
 ) {
     try {
         return await prisma.medicine.update({
-            where: { id, userId },
+            where: {
+                id,
+                userId,
+                status: { not: MedicineStatus.REMOVED },
+            },
             data,
             select: MEDICINE_SELECT,
         });
@@ -152,7 +160,11 @@ export async function updateForUser(
 export async function markRemoved(id: string, userId: string) {
     try {
         return await prisma.medicine.update({
-            where: { id, userId },
+            where: {
+                id,
+                userId,
+                status: { not: MedicineStatus.REMOVED },
+            },
             data: { status: MedicineStatus.REMOVED },
             select: MEDICINE_SELECT,
         });
