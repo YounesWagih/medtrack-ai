@@ -1,22 +1,37 @@
-import app from "./app.js";
-import { env } from "./config/env.js";
-import { connectRedis, disconnectRedis } from "./config/redis.js";
-import { connectDatabase } from "./db/db.js";
-import { startMedicineExpiryJob, stopMedicineExpiryJob } from "./jobs/medicine-expiry.job.js";
-import { createHttpLogger } from "./logging/logger.js";
-import { startMetricsServer, stopMetricsServer } from "./metrics/server.js";
+import "dotenv/config";
+import { startTracing, stopTracing } from "./tracing/tracing.js";
+
+startTracing();
+
+const [
+    { default: app },
+    { env },
+    { connectRedis, disconnectRedis },
+    { connectDatabase },
+    { startMedicineExpiryJob, stopMedicineExpiryJob },
+    { createHttpLogger },
+    { startMetricsServer, stopMetricsServer },
+] = await Promise.all([
+    import("./app.js"),
+    import("./config/env.js"),
+    import("./config/redis.js"),
+    import("./db/db.js"),
+    import("./jobs/medicine-expiry.job.js"),
+    import("./logging/logger.js"),
+    import("./metrics/server.js"),
+]);
 
 const logger = createHttpLogger();
 
-// DB is a hard dependency — fail fast if it cannot be reached
+// DB is a hard dependency: fail fast if it cannot be reached.
 await connectDatabase();
 
-// Connect to Redis before starting server
+// Connect to Redis before starting server.
 await connectRedis();
 
 const metricsServer = await startMetricsServer();
 
-// Start medicine expiry cron job
+// Start medicine expiry cron job.
 startMedicineExpiryJob();
 
 const server = app.listen(env.PORT, () => {
@@ -30,7 +45,6 @@ const server = app.listen(env.PORT, () => {
     );
 });
 
-// Graceful shutdown: stop cron job and disconnect Redis before exit
 let shuttingDown = false;
 
 async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
@@ -43,6 +57,7 @@ async function shutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
         new Promise<void>((resolve) => server.close(() => resolve())),
     ]);
     await disconnectRedis();
+    await stopTracing();
     logger.info({ event: "server.closed" }, "Server closed");
 }
 

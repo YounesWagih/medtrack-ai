@@ -25,7 +25,6 @@ export async function sendExpiryNotification(payload: NotificationPayload): Prom
       newStatus: payload.newStatus,
       jobRunId: context?.jobRunId,
       requestId: context?.requestId,
-      traceId: context?.traceId,
     },
     "notification expiry queued (stub)",
   );

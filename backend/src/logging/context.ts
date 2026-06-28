@@ -1,10 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { getActiveSpanContext } from "../tracing/tracing.js";
 
 export interface RequestContext {
     requestId: string;
     traceId?: string;
-    spanId?: string;
-    parentSpanId?: string;
     userId?: string;
     route?: string;
     method?: string;
@@ -35,16 +34,21 @@ export function getUserIdFromContext(): string | undefined {
 export function getTraceContext(): {
     traceId?: string;
     spanId?: string;
-    parentSpanId?: string;
 } {
+    const activeTrace = getActiveSpanContext();
+    if (activeTrace.traceId || activeTrace.spanId) {
+        return {
+            traceId: activeTrace.traceId,
+            spanId: activeTrace.spanId,
+        };
+    }
+
     const store = requestContextStore.getStore();
     if (!store) {
         return {};
     }
     return {
         traceId: store.traceId,
-        spanId: store.spanId,
-        parentSpanId: store.parentSpanId,
     };
 }
 
@@ -52,5 +56,9 @@ export function runWithContext<T>(
     context: RequestContext,
     callback: () => T,
 ): T {
-    return requestContextStore.run(context, callback);
+    const activeTrace = getActiveSpanContext();
+    return requestContextStore.run({
+        ...context,
+        traceId: activeTrace.traceId ?? context.traceId,
+    }, callback);
 }

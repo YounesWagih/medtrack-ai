@@ -1,6 +1,7 @@
 import { chatSend } from "@openrouter/sdk/funcs/chatSend.js";
 import { OpenRouterCore } from "@openrouter/sdk/core.js";
 import { ChatSessionStatus, ChatMessageRole } from "@prisma/client";
+import { SpanStatusCode } from "@opentelemetry/api";
 import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
 import * as chatRepo from "../repositories/chat.repository.js";
@@ -18,6 +19,7 @@ import {
     recordMetric,
     statusClass,
 } from "../metrics/metrics.js";
+import { withSpan } from "../tracing/spans.js";
 
 const chatLogger = createChatLogger();
 const openrouter = new OpenRouterCore({
@@ -36,7 +38,6 @@ export async function createSession(userId: string) {
             userId,
             sessionId: session.id,
             requestId: context?.requestId,
-            traceId: context?.traceId,
         },
         "chat session created",
     );
@@ -70,17 +71,32 @@ export async function sendMessage(
     const prompt = buildPrompt(userMessage, medicinesWithExpiry, history);
     const externalStart = Date.now();
     try {
-        const res = await chatSend(openrouter, {
-            chatRequest: {
-                model: env.MODEL_NAME,
-                messages: [
-                    {
-                        role: "user",
-                        content: prompt,
-                    },
-                ],
+        const res = await withSpan(
+            "openrouter.chat",
+            {
+                "dependency.name": "openrouter",
+                "dependency.operation": "chat",
+                "gen_ai.request.model": env.MODEL_NAME,
             },
-        });
+            async (span) => {
+                const response = await chatSend(openrouter, {
+                    chatRequest: {
+                        model: env.MODEL_NAME,
+                        messages: [
+                            {
+                                role: "user",
+                                content: prompt,
+                            },
+                        ],
+                    },
+                });
+                span.setAttribute("dependency.outcome", response.ok ? "success" : "error");
+                if (!response.ok) {
+                    span.setStatus({ code: SpanStatusCode.ERROR, message: "OpenRouter request failed" });
+                }
+                return response;
+            },
+        );
 
         if (!res.ok) {
             const sdkError = res.error as { status?: number };
@@ -122,7 +138,6 @@ export async function sendMessage(
                 responseType: parsedResponse.type,
                 durationMs,
                 requestId: context?.requestId,
-                traceId: context?.traceId,
             },
             "chat message processed",
         );
@@ -181,7 +196,6 @@ export async function deleteSession(sessionId: string, userId: string) {
             userId,
             sessionId,
             requestId: context?.requestId,
-            traceId: context?.traceId,
         },
         "chat session deleted",
     );

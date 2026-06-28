@@ -16,6 +16,9 @@ services:
       SERVICE_VERSION: 1.0.0
       METRICS_ENABLED: "true"
       METRICS_PORT: 9464
+      TRACING_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://alloy:4318/v1/traces
+      OTEL_TRACES_SAMPLER_RATIO: 1
       DATABASE_URL: postgresql://medtrack:medtrack@postgres:5432/medicine_db
       REDIS_URL: redis://redis:6379
     ports:
@@ -34,6 +37,8 @@ services:
         condition: service_healthy
       loki:
         condition: service_healthy
+      alloy:
+        condition: service_started
     networks:
       - observability
 
@@ -168,6 +173,18 @@ services:
     networks:
       - observability
 
+  tempo:
+    image: grafana/tempo:2.10.7
+    container_name: medtrack-tempo
+    command: ["-config.file=/etc/tempo/tempo-config.yaml"]
+    ports:
+      - "3200:3200"
+    volumes:
+      - ./observability/tempo/tempo-config.yaml:/etc/tempo/tempo-config.yaml:ro
+      - tempo-data:/var/tempo
+    networks:
+      - observability
+
   grafana:
     image: grafana/grafana:12.2.0
     container_name: medtrack-grafana
@@ -184,6 +201,8 @@ services:
     depends_on:
       loki:
         condition: service_healthy
+      tempo:
+        condition: service_started
       prometheus:
         condition: service_healthy
     networks:
@@ -206,6 +225,8 @@ services:
     depends_on:
       loki:
         condition: service_healthy
+      tempo:
+        condition: service_started
     networks:
       - observability
 
@@ -220,3 +241,4 @@ volumes:
   postgres-data:
   redis-data:
   prometheus-data:
+  tempo-data:

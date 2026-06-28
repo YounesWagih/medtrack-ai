@@ -1,18 +1,17 @@
 import type { AxiosRequestConfig } from "axios";
 import { requestContextStore } from "./context.js";
+import { injectTraceHeaders } from "../tracing/tracing.js";
 
 export function getCorrelationHeaders(): Record<string, string> {
     const context = requestContextStore.getStore();
-    if (!context) return {};
 
     const headers: Record<string, string> = {};
-    if (context.requestId) {
+    injectTraceHeaders(headers);
+
+    if (context?.requestId) {
         headers["x-request-id"] = context.requestId;
     }
-    if (context.traceId) {
-        headers["traceparent"] =
-            `00-${context.traceId}-${context.spanId ?? "0000000000000000"}-01`;
-    }
+
     return headers;
 }
 

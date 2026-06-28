@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import { DomainError } from "../errors/DomainError.js";
 import { createErrorLogger } from "../logging/logger.js";
 import { requestContextStore } from "../logging/context.js";
+import { recordSpanException } from "../tracing/tracing.js";
 
 //TODO: refactor this file to define common log fields (path, method, route) and use it later
 
@@ -19,11 +20,11 @@ export const globalExceptionHandler = (
 
     if (err instanceof APIError) {
         if (err.statusCode >= 500) {
+            recordSpanException(err);
             errorLogger.error(
                 {
                     event: "request.error",
                     requestId: context?.requestId,
-                    traceId: context?.traceId,
                     userId: context?.userId,
                     route: req.route?.path,
                     method: req.method,
@@ -55,11 +56,11 @@ export const globalExceptionHandler = (
 
     if (err instanceof DomainError) {
         if (err.httpStatus >= 500) {
+            recordSpanException(err);
             errorLogger.error(
                 {
                     event: "request.error",
                     requestId: context?.requestId,
-                    traceId: context?.traceId,
                     userId: context?.userId,
                     route: req.route?.path,
                     method: req.method,
@@ -78,11 +79,11 @@ export const globalExceptionHandler = (
         return res.status(err.httpStatus).json(ResponseHelper.error(err.message));
     }
 
+    recordSpanException(err);
     errorLogger.error(
         {
             event: "request.unexpected_error",
             requestId: context?.requestId,
-            traceId: context?.traceId,
             userId: context?.userId,
             route: req.route?.path,
             method: req.method,

@@ -1,6 +1,7 @@
 import pino from "pino";
 import { prettyTransport } from "./transport.js";
 import { env } from "../config/env.js";
+import { getTraceContext } from "./context.js";
 
 export const rootLogger = pino(
     {
@@ -18,6 +19,13 @@ export const rootLogger = pino(
                     levelLabel: label,
                 };
             },
+        },
+        mixin() {
+            const traceContext = getTraceContext();
+            return {
+                traceId: traceContext.traceId,
+                spanId: traceContext.spanId,
+            };
         },
         redact: {
             paths: [

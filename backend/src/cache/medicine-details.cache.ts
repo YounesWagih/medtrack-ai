@@ -7,6 +7,7 @@ import {
 } from "../schemas/external-api.schema.js";
 import { getSafeErrorFields } from "../utils/error-utils.js";
 import { cacheOperationsTotal, recordMetric } from "../metrics/metrics.js";
+import { withSpan } from "../tracing/spans.js";
 
 const redisLogger = createRedisLogger();
 
@@ -41,6 +42,13 @@ async function scanMedicineDetailsKeys(): Promise<string[]> {
 export async function getMedicineDetailsFromCache(
     slug: string,
 ): Promise<MedicineDetailsResult | null> {
+    return await withSpan(
+        "cache.medicine_details.read",
+        {
+            "cache.namespace": CACHE_NAMESPACE,
+            "cache.operation": "read",
+        },
+        async (span) => {
     const cacheKey = getCacheKey(slug);
 
     try {
@@ -57,6 +65,7 @@ export async function getMedicineDetailsFromCache(
                     "cache hit for medicine details",
                 );
                 recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "hit" }));
+                span.setAttribute("cache.outcome", "hit");
                 return parsed;
             } catch (parseErr) {
                 redisLogger.warn(
@@ -69,6 +78,7 @@ export async function getMedicineDetailsFromCache(
                     "corrupted cache entry, fetching from API",
                 );
                 recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "corrupt" }));
+                span.setAttribute("cache.outcome", "corrupt");
                 return null;
             }
         }
@@ -82,6 +92,7 @@ export async function getMedicineDetailsFromCache(
             "cache miss for medicine details",
         );
         recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "miss" }));
+        span.setAttribute("cache.outcome", "miss");
         return null;
     } catch (err) {
         redisLogger.warn(
@@ -94,14 +105,24 @@ export async function getMedicineDetailsFromCache(
             "cache read failed",
         );
         recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "read", outcome: "failure" }));
+        span.setAttribute("cache.outcome", "failure");
         return null;
     }
+        },
+    );
 }
 
 export async function setMedicineDetailsInCache(
     slug: string,
     result: MedicineDetailsResult,
 ): Promise<void> {
+    await withSpan(
+        "cache.medicine_details.write",
+        {
+            "cache.namespace": CACHE_NAMESPACE,
+            "cache.operation": "write",
+        },
+        async (span) => {
     const cacheKey = getCacheKey(slug);
 
     try {
@@ -118,6 +139,7 @@ export async function setMedicineDetailsInCache(
             "medicine details cached",
         );
         recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "write", outcome: "success" }));
+        span.setAttribute("cache.outcome", "success");
     } catch (err) {
         redisLogger.warn(
             {
@@ -129,7 +151,10 @@ export async function setMedicineDetailsInCache(
             "cache write failed",
         );
         recordMetric(() => cacheOperationsTotal.inc({ namespace: CACHE_NAMESPACE, operation: "write", outcome: "failure" }));
+        span.setAttribute("cache.outcome", "failure");
     }
+        },
+    );
 }
 
 export async function clearMedicineDetailsCacheEntry(

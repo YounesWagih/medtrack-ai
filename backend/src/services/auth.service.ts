@@ -46,7 +46,6 @@ export async function register(data: RegisterInput) {
             userId: user.id,
             emailHash: hashEmail(data.email),
             requestId: context?.requestId,
-            traceId: context?.traceId,
         },
         "user registered",
     );
@@ -75,7 +74,6 @@ export async function login(data: LoginInput) {
             userId: user.id,
             emailHash: hashEmail(data.email),
             requestId: context?.requestId,
-            traceId: context?.traceId,
         },
         "login succeeded",
     );
