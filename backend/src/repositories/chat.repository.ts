@@ -76,6 +76,37 @@ export async function addMessage(
     }
 }
 
+export async function addConversationTurn(
+    sessionId: string,
+    userContent: string,
+    assistantContent: string,
+) {
+    try {
+        return await prisma.$transaction([
+            prisma.chatMessage.create({
+                data: {
+                    sessionId,
+                    role: ChatMessageRole.USER,
+                    content: userContent,
+                },
+                select: MESSAGE_SELECT,
+            }),
+            prisma.chatMessage.create({
+                data: {
+                    sessionId,
+                    role: ChatMessageRole.ASSISTANT,
+                    content: assistantContent,
+                },
+                select: MESSAGE_SELECT,
+            }),
+        ]);
+    } catch (err) {
+        const domainErr = classifyPrismaError(err);
+        if (domainErr) throw domainErr;
+        throw new ForeignKeyError();
+    }
+}
+
 export async function findMessagesBySession(sessionId: string) {
     return await prisma.chatMessage.findMany({
         where: { sessionId },

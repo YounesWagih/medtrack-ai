@@ -7,7 +7,7 @@
     "build": "tsc",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "test": "tsx --test tests/metrics.test.ts tests/tracing.test.ts tests/medicalSafetyGate.test.ts tests/aiResponseParser.test.ts tests/rateLimit.test.ts tests/auth.test.ts tests/medicineRepository.test.ts",
+    "test": "tsx --test tests/metrics.test.ts tests/tracing.test.ts tests/medicalSafetyGate.test.ts tests/aiResponseParser.test.ts tests/rateLimit.test.ts tests/auth.test.ts tests/medicineRepository.test.ts tests/chatRepository.test.ts",
     "generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",

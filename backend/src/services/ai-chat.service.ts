@@ -1,6 +1,6 @@
 import { chatSend } from "@openrouter/sdk/funcs/chatSend.js";
 import { OpenRouterCore } from "@openrouter/sdk/core.js";
-import { ChatSessionStatus, ChatMessageRole } from "@prisma/client";
+import { ChatSessionStatus } from "@prisma/client";
 import { SpanStatusCode } from "@opentelemetry/api";
 import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
@@ -59,16 +59,13 @@ export async function sendMessage(
     const start = Date.now();
     const session = await chatRepo.findSessionById(sessionId, userId);
 
-    await chatRepo.addMessage(sessionId, ChatMessageRole.USER, userMessage);
-
     const history = await chatRepo.findMessagesBySession(sessionId);
-    const previousHistory = history.slice(0, -1);
 
-    if (needsSafetyQuestions(userMessage, previousHistory)) {
+    if (needsSafetyQuestions(userMessage, history)) {
         const safetyMessage = buildSafetyQuestionsMessage(userMessage);
-        await chatRepo.addMessage(
+        await chatRepo.addConversationTurn(
             sessionId,
-            ChatMessageRole.ASSISTANT,
+            userMessage,
             safetyMessage,
         );
 
@@ -148,9 +145,9 @@ export async function sendMessage(
         const parsedResponse = parseAIResponse(responseText);
         const displayResponseText = stripAIResponseMetadata(responseText);
 
-        await chatRepo.addMessage(
+        await chatRepo.addConversationTurn(
             sessionId,
-            ChatMessageRole.ASSISTANT,
+            userMessage,
             displayResponseText,
         );
 
