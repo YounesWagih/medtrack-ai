@@ -54,7 +54,6 @@ export async function createMedicine(
             changedFields: ["name", "expiryDate", "description", "longDescription", "image"],
             status,
             requestId: context?.requestId,
-            traceId: context?.traceId,
         },
         "medicine created",
     );
@@ -146,7 +145,6 @@ export async function updateMedicine(
                     oldStatus: updated.status,
                     newStatus: statusUpdated.status,
                     requestId: context?.requestId,
-                    traceId: context?.traceId,
                 },
                 "medicine updated with status transition",
             );
@@ -164,7 +162,6 @@ export async function updateMedicine(
             changedFields: Object.keys(sanitizedPayload),
             status: updated.status,
             requestId: context?.requestId,
-            traceId: context?.traceId,
         },
         "medicine updated",
     );
@@ -188,7 +185,6 @@ export async function removeMedicine(userId: string, medicineId: string) {
             medicineId,
             status: updated.status,
             requestId: context?.requestId,
-            traceId: context?.traceId,
         },
         "medicine removed",
     );

@@ -40,9 +40,20 @@ const envSchema = z.object({
         .default("true")
         .transform((value) => value.toLowerCase() === "true"),
     METRICS_PORT: z.coerce.number().int().min(1).max(65535).default(9464),
+    TRACING_ENABLED: z
+        .string()
+        .default("true")
+        .transform((value) => value.toLowerCase() === "true"),
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z
+        .string()
+        .url()
+        .default("http://localhost:4318/v1/traces"),
+    OTEL_TRACES_SAMPLER_RATIO: z.coerce.number().min(0).max(1).optional(),
 });
 
-export type EnvConfig = z.infer<typeof envSchema>;
+export type EnvConfig = z.infer<typeof envSchema> & {
+    OTEL_TRACES_SAMPLER_RATIO: number;
+};
 
 function validateEnv(): EnvConfig {
     const raw = process.env;
@@ -52,7 +63,11 @@ function validateEnv(): EnvConfig {
         console.error("Environment validation failed\n", tree);
         process.exit(1);
     }
-    return parsed.data;
+    return {
+        ...parsed.data,
+        OTEL_TRACES_SAMPLER_RATIO: parsed.data.OTEL_TRACES_SAMPLER_RATIO
+            ?? (parsed.data.NODE_ENV === "production" ? 0.1 : 1),
+    };
 }
 
 export const env = validateEnv();

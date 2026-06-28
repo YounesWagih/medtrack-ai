@@ -1,4 +1,3 @@
-import "dotenv/config";
 import express, { Express, Request, Response } from "express";
 import globalExceptionHandler from "./middlewares/globalExceptionHandler.js";
 import router from "./routes/index.js";

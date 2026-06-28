@@ -14,6 +14,7 @@ import {
     recordMetric,
     statusClass,
 } from "../metrics/metrics.js";
+import { withSpan } from "../tracing/spans.js";
 
 const externalApiLogger = createExternalApiLogger();
 const EXTERNAL_API_BASE = "https://api.alabdellatif-tarshouby.com/api/customer";
@@ -42,13 +43,21 @@ export async function searchExternalMedicines(
 ): Promise<ExternalMedicineSearchItem[]> {
     const start = Date.now();
     try {
-        const response = await externalApiClient.post(
-            "/products/search",
+        const response = await withSpan(
+            "medicine_api.search",
             {
-                q: query,
-                page,
-                page_size: pageSize,
+                "dependency.name": "medicine_api",
+                "dependency.operation": "search",
+                "http.request.method": "POST",
             },
+            () => externalApiClient.post(
+                "/products/search",
+                {
+                    q: query,
+                    page,
+                    page_size: pageSize,
+                },
+            ),
         );
 
         const durationMs = Date.now() - start;
@@ -100,11 +109,19 @@ export async function getExternalMedicineDetails(
 ): Promise<ExternalMedicineDetails | null> {
     const start = Date.now();
     try {
-        const response = await externalApiClient.get(
-            `/products/${slug}/slug`,
+        const response = await withSpan(
+            "medicine_api.details",
             {
-                params: { ignore_similar_products: 1 },
+                "dependency.name": "medicine_api",
+                "dependency.operation": "details",
+                "http.request.method": "GET",
             },
+            () => externalApiClient.get(
+                `/products/${slug}/slug`,
+                {
+                    params: { ignore_similar_products: 1 },
+                },
+            ),
         );
 
         const durationMs = Date.now() - start;

@@ -17,8 +17,6 @@ export const httpLoggerMiddleware = pinoHttp<Request, Response>({
         return {
             event: "request.completed",
             requestId: context?.requestId,
-            traceId: context?.traceId,
-            spanId: context?.spanId,
             userId: context?.userId,
             route: req.route?.path ?? context?.route,
             method: req.method,

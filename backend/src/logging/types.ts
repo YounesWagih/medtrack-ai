@@ -14,7 +14,6 @@ export interface BaseLogFields {
     requestId?: string;
     traceId?: string;
     spanId?: string;
-    parentSpanId?: string;
     userId?: string;
     route?: string;
     method?: string;
