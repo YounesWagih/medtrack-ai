@@ -6,7 +6,7 @@ import { env } from "../config/env.js";
 import { APIError } from "../errors/APIError.js";
 import * as chatRepo from "../repositories/chat.repository.js";
 import * as medicineRepo from "../repositories/medicine.repository.js";
-import { buildPrompt } from "../utils/promptBuilder.js";
+import { buildChatMessages } from "../utils/promptBuilder.js";
 import {
     parseAIResponse,
     stripAIResponseMetadata,
@@ -95,7 +95,7 @@ export async function sendMessage(
         expiryDate: m.expiryDate,
     }));
 
-    const prompt = buildPrompt(userMessage, medicinesWithExpiry, history);
+    const messages = buildChatMessages(userMessage, medicinesWithExpiry, history);
     const externalStart = Date.now();
     try {
         const res = await withSpan(
@@ -109,12 +109,7 @@ export async function sendMessage(
                 const response = await chatSend(openrouter, {
                     chatRequest: {
                         model: env.MODEL_NAME,
-                        messages: [
-                            {
-                                role: "user",
-                                content: prompt,
-                            },
-                        ],
+                        messages,
                     },
                 });
                 span.setAttribute("dependency.outcome", response.ok ? "success" : "error");
