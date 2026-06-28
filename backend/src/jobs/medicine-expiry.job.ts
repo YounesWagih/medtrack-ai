@@ -1,6 +1,9 @@
 import cron, { ScheduledTask } from "node-cron";
 import * as medicineService from "../services/medicine.service.js";
-import { sendExpiryNotification } from "../services/notification.service.js";
+import {
+  NotificationPayload,
+  sendExpiryNotification,
+} from "../services/notification.service.js";
 import { MedicineStatus } from "@prisma/client";
 import { env } from "../config/env.js";
 import { createCronLogger } from "../logging/logger.js";
@@ -17,6 +20,54 @@ import {
 
 const cronLogger = createCronLogger();
 let expiryJob: ScheduledTask | null = null;
+
+type NotificationSender = (payload: NotificationPayload) => Promise<void>;
+
+export async function sendExpiryNotifications(
+  results: NotificationPayload[],
+  context: { jobRunId: string; requestId: string },
+  notify: NotificationSender = sendExpiryNotification,
+): Promise<{ successCount: number; failureCount: number }> {
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (const result of results) {
+    try {
+      await runWithContext(
+        context,
+        () => withSpan(
+          "medicine_expiry.notification",
+          {
+            "job.name": "medicine_expiry",
+            "job.run_id": context.jobRunId,
+            "notification.type": "expiry",
+          },
+          () => notify({ ...result }),
+        ),
+      );
+      successCount += 1;
+      recordMetric(() => jobItemsTotal.inc({ job: "medicine_expiry", item: "notification", outcome: "success" }));
+    } catch (error) {
+      failureCount += 1;
+      recordMetric(() => jobItemsTotal.inc({ job: "medicine_expiry", item: "notification", outcome: "error" }));
+      cronLogger.warn(
+        {
+          event: "medicine_expiry_job.notification_failed",
+          jobRunId: context.jobRunId,
+          userId: result.userId,
+          medicineId: result.medicineId,
+          error: {
+            name: error instanceof Error ? error.name : "UnknownError",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        },
+        "medicine expiry notification failed; continuing with remaining notifications",
+      );
+    }
+  }
+
+  return { successCount, failureCount };
+}
 
 export function startMedicineExpiryJob(): void {
   if (expiryJob) {
@@ -87,38 +138,35 @@ export async function runMedicineExpirySync(): Promise<void> {
       `sync completed. ${results.length} medicines updated.`,
     );
 
-    for (const result of results) {
-      try {
-        await runWithContext(
-          { requestId, jobRunId },
-          () => withSpan(
-            "medicine_expiry.notification",
-            {
-              "job.name": "medicine_expiry",
-              "job.run_id": jobRunId,
-              "notification.type": "expiry",
-            },
-            () => sendExpiryNotification({ ...result }),
-          ),
-        );
-        recordMetric(() => jobItemsTotal.inc({ job: "medicine_expiry", item: "notification", outcome: "success" }));
-      } catch (error) {
-        recordMetric(() => jobItemsTotal.inc({ job: "medicine_expiry", item: "notification", outcome: "error" }));
-        throw error;
-      }
-    }
+    const notificationResults = await sendExpiryNotifications(
+      results,
+      { requestId, jobRunId },
+    );
+    span.setAttribute("notification.success_count", notificationResults.successCount);
+    span.setAttribute("notification.failure_count", notificationResults.failureCount);
 
     const duration = Date.now() - startTime;
+    const outcome = notificationResults.failureCount > 0 ? "partial_error" : "success";
     recordMetric(() => {
-      jobRunsTotal.inc({ job: "medicine_expiry", outcome: "success" });
-      jobDuration.observe({ job: "medicine_expiry", outcome: "success" }, duration / 1000);
-      jobLastSuccessTimestamp.set({ job: "medicine_expiry" }, Date.now() / 1000);
+      jobRunsTotal.inc({ job: "medicine_expiry", outcome });
+      jobDuration.observe({ job: "medicine_expiry", outcome }, duration / 1000);
+      if (outcome === "success") {
+        jobLastSuccessTimestamp.set({ job: "medicine_expiry" }, Date.now() / 1000);
+      }
       jobItemsTotal.inc({ job: "medicine_expiry", item: "medicine_updated", outcome: "success" }, results.length);
     });
-    span.setAttribute("job.outcome", "success");
+    span.setAttribute("job.outcome", outcome);
     span.setAttribute("job.duration_ms", duration);
-    cronLogger.info(
-      { event: "medicine_expiry_job.completed", jobRunId, updatedCount: results.length, durationMs: duration },
+    const log = notificationResults.failureCount > 0 ? cronLogger.warn.bind(cronLogger) : cronLogger.info.bind(cronLogger);
+    log(
+      {
+        event: "medicine_expiry_job.completed",
+        jobRunId,
+        updatedCount: results.length,
+        notificationSuccessCount: notificationResults.successCount,
+        notificationFailureCount: notificationResults.failureCount,
+        durationMs: duration,
+      },
       `job completed in ${duration}ms`,
     );
   } catch (error) {
