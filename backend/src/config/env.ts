@@ -14,7 +14,7 @@ const envSchema = z.object({
     CHAT_RATE_LIMIT: z.coerce.number().int().positive().default(50),
     OPENROUTER_API_KEY: z.string().min(1, "OPENROUTER_API_KEY is required"),
     MODEL_NAME: z.string(),
-    MEDICINE_EXPIRING_SOON_DAYS: z.coerce.number().default(30),
+    MEDICINE_EXPIRING_SOON_DAYS: z.coerce.number().int().nonnegative().default(30),
     MEDICINE_EXPIRY_CRON: z
         .string()
         .refine(
@@ -55,19 +55,29 @@ export type EnvConfig = z.infer<typeof envSchema> & {
     OTEL_TRACES_SAMPLER_RATIO: number;
 };
 
-function validateEnv(): EnvConfig {
-    const raw = process.env;
+export function parseEnv(raw: NodeJS.ProcessEnv): EnvConfig {
     const parsed = envSchema.safeParse(raw);
     if (!parsed.success) {
-        const tree = z.prettifyError(parsed.error);
-        console.error("Environment validation failed\n", tree);
-        process.exit(1);
+        throw parsed.error;
     }
     return {
         ...parsed.data,
         OTEL_TRACES_SAMPLER_RATIO: parsed.data.OTEL_TRACES_SAMPLER_RATIO
             ?? (parsed.data.NODE_ENV === "production" ? 0.1 : 1),
     };
+}
+
+function validateEnv(): EnvConfig {
+    try {
+        return parseEnv(process.env);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            const tree = z.prettifyError(error);
+            console.error("Environment validation failed\n", tree);
+            process.exit(1);
+        }
+        throw error;
+    }
 }
 
 export const env = validateEnv();
