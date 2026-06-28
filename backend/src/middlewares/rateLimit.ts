@@ -23,29 +23,44 @@ const rateLimiter = new RateLimiterRedis({
     insuranceLimiter,
 });
 
-export const rateLimit = async (
-    req: AuthenticatedRequest,
-    _res: Response,
-    next: NextFunction,
-) => {
-    const userId = req.user?.userId;
-
-    if (!userId) {
-        throw new APIError("Unauthorized", 401);
-    }
-
-    try {
-        await rateLimiter.consume(userId);
-        next();
-    } catch (err: any) {
-        if (err?.msBeforeNext !== undefined) {
-            recordMetric(() => rateLimitRejectionsTotal.inc({ limiter: "chat" }));
-            const seconds = Math.ceil(err.msBeforeNext / 1000);
-
-            throw new APIError(
-                `Too many requests. Please try again in ${seconds} second${seconds > 1 ? "s" : ""}`,
-                429,
-            );
-        }
-    }
+type RateLimitConsumer = {
+    consume: (key: string) => Promise<unknown>;
 };
+
+export function createRateLimitMiddleware(limiter: RateLimitConsumer) {
+    return async (
+        req: AuthenticatedRequest,
+        _res: Response,
+        next: NextFunction,
+    ) => {
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            throw new APIError("Unauthorized", 401);
+        }
+
+        try {
+            await limiter.consume(userId);
+            next();
+        } catch (err: unknown) {
+            if (
+                typeof err === "object"
+                && err !== null
+                && "msBeforeNext" in err
+                && typeof err.msBeforeNext === "number"
+            ) {
+                recordMetric(() => rateLimitRejectionsTotal.inc({ limiter: "chat" }));
+                const seconds = Math.ceil(err.msBeforeNext / 1000);
+
+                throw new APIError(
+                    `Too many requests. Please try again in ${seconds} second${seconds > 1 ? "s" : ""}`,
+                    429,
+                );
+            }
+
+            throw new APIError("Rate limiter unavailable", 503);
+        }
+    };
+}
+
+export const rateLimit = createRateLimitMiddleware(rateLimiter);
