@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useChatMessages } from '@/hooks/useChat';
+import { useMedicines } from '@/hooks/useMedicines';
 import type { ChatMessage as ChatMessageType } from '@/types/api';
 import { ChatMessageRole } from '@/types/api';
 import { Clock, Info, Lightbulb, MessageSquare, Pill } from 'lucide-react';
@@ -34,6 +35,7 @@ const starterPrompts = [
 export function ChatWindow({ sessionId, onSendMessage, isLoading = false }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, sendMessage } = useChatMessages(sessionId || '');
+  const { medicines } = useMedicines({ limit: 100 });
   const [pendingInfo, setPendingInfo] = useState<{ content: string; time: number } | null>(null);
   const prevMsgCountRef = useRef(0);
 
@@ -173,7 +175,7 @@ export function ChatWindow({ sessionId, onSendMessage, isLoading = false }: Chat
           ) : (
             <div className="p-6 space-y-6">
               {allMessages.map((message: ChatMessageType) => (
-                <ChatMessage key={message.id} message={message} />
+                <ChatMessage key={message.id} message={message} medicines={medicines} />
               ))}
               {sessionId && isLoading && (
                 <ChatMessage
@@ -184,6 +186,7 @@ export function ChatWindow({ sessionId, onSendMessage, isLoading = false }: Chat
                     content: '',
                     createdAt: new Date().toISOString(),
                   }}
+                  medicines={medicines}
                   isStreaming
                 />
               )}

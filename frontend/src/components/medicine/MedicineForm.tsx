@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Plus, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CalendarDays, CheckCircle2 } from 'lucide-react';
 import { medicineSchema, type MedicineInput } from '@/lib/validations';
 import { medicineService } from '@/services/medicine.service';
 import type { ExternalMedicineSearchItem, ExternalMedicineDetails } from '@/types/api';
@@ -64,6 +64,7 @@ export function MedicineForm({
     setMedicineDetails(null);
     setExistsInInventory(false);
     setDetailsLoading(true);
+    setShowExpiryDate(true);
     clearErrors('name');
 
     try {
@@ -94,26 +95,30 @@ export function MedicineForm({
     }
   };
 
-  const handleAddToInventory = () => {
-    setShowExpiryDate(true);
-  };
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {!defaultValues?.name && (
-        <div className="space-y-2">
-          <Label>Medicine Name</Label>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Medicine Name</Label>
+            <p className="text-sm text-muted-foreground">
+              Search and select the product you want to track.
+            </p>
+          </div>
           {!selectedMedicine ? (
             <MedicineSearchInput
               placeholder="Search for a medicine..."
               onSelect={handleMedicineSelect}
             />
           ) : (
-            <div className="p-3 rounded-md border bg-muted/50">
-              <p className="font-medium">{selectedMedicine.name_en || selectedMedicine.name_ar}</p>
-              {selectedMedicine.name_ar && selectedMedicine.name_en && (
-                <p className="text-sm text-muted-foreground">{selectedMedicine.name_ar}</p>
-              )}
+            <div className="flex items-start gap-3 rounded-md border border-border bg-primary-light p-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-textPrimary">{selectedMedicine.name_en || selectedMedicine.name_ar}</p>
+                {selectedMedicine.name_ar && selectedMedicine.name_en && (
+                  <p className="text-sm text-muted-foreground">{selectedMedicine.name_ar}</p>
+                )}
+              </div>
             </div>
           )}
           {errors.name && (
@@ -129,18 +134,6 @@ export function MedicineForm({
         <div className="space-y-4">
           <MedicineDetailsCard details={medicineDetails} isLoading={detailsLoading} />
 
-          {selectedMedicine && !existsInInventory && (
-            <Button
-              type="button"
-              onClick={handleAddToInventory}
-              className="w-full"
-              variant="outline"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add to Inventory
-            </Button>
-          )}
-
           {selectedMedicine && existsInInventory && (
             <div className="flex items-center gap-2 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800">
               <AlertCircle className="h-4 w-4" />
@@ -151,19 +144,33 @@ export function MedicineForm({
       )}
 
       {showExpiryDate && (
-        <div className="space-y-2">
-          <Label>Expiry Date</Label>
+        <div className="rounded-md border border-border bg-surface p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-primary-light p-2 text-primary">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <Label>Expiry Date</Label>
+              <p className="text-sm text-muted-foreground">
+                Choose when this item expires so MedTrack AI can show the right status.
+              </p>
+            </div>
+          </div>
 
           <DateSelect
             value={parsedDate}
+            className="flex-wrap"
             onChange={(date) => {
               if (date) {
-                setValue('expiryDate', date.toISOString())
+                setValue('expiryDate', date.toISOString(), { shouldValidate: true, shouldDirty: true })
               }
             }}
           />
           {errors.expiryDate && (
-            <p className="text-sm text-red-500">{errors.expiryDate.message}</p>
+            <p className="text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {errors.expiryDate.message}
+            </p>
           )}
         </div>
       )}
@@ -175,10 +182,15 @@ export function MedicineForm({
       <input type="hidden" {...register('longDescription')} />
       <input type="hidden" {...register('image')} />
 
-       <div className="flex justify-end gap-4">
+       <div className="sticky bottom-0 -mx-1 flex items-center justify-between gap-4 border-t border-border bg-background/95 px-1 pt-4">
+          <p className="text-sm text-muted-foreground">
+            {!selectedMedicine && !defaultValues?.name
+              ? 'Select a medicine to continue.'
+              : 'Review the details and save it to your inventory.'}
+          </p>
           <Button
             type="submit"
-            disabled={isLoading || existsInInventory}
+            disabled={isLoading || existsInInventory || detailsLoading || (!selectedMedicine && !defaultValues?.name)}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {submitLabel}

@@ -58,7 +58,7 @@ export function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           <StatsCard title="Active Medicines" value={activeCount} color="green" />
           <StatsCard title="Expiring Soon" value={expiringSoonCount} color="orange" />
           <StatsCard title="Expired" value={expiredCount} color="red" />

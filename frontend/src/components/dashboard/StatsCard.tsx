@@ -46,22 +46,22 @@ export function StatsCard({ title, value, color }: StatsCardProps) {
 
   return (
     <Card className={cn(
-      'p-6 border-2 transition-all duration-300 hover:shadow-lg hover:scale-105',
+      'min-w-0 p-4 sm:p-5 lg:p-6 border-2 transition-all duration-300 hover:shadow-lg hover:scale-[1.02]',
       config.bg,
       config.border
     )}>
-      <div className="flex items-center space-x-4">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <div className={cn(
-          'p-3 rounded-xl',
+          'shrink-0 rounded-xl p-3',
           config.iconBg
         )}>
           <IconComponent className={cn('h-8 w-8', config.icon)} />
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <p className="text-3xl font-bold text-textPrimary mb-1">
             {animatedValue}
           </p>
-          <p className={cn('text-sm font-medium', config.text)}>{title}</p>
+          <p className={cn('text-sm font-medium leading-snug break-words', config.text)}>{title}</p>
         </div>
       </div>
     </Card>

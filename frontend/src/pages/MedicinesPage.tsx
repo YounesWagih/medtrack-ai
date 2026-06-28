@@ -150,7 +150,7 @@ export function MedicinesPage() {
           <MedicineForm
             onSubmit={handleAdd}
             isLoading={isCreating}
-            submitLabel="Add Medicine"
+            submitLabel="Save to Inventory"
           />
         </DialogContent>
       </Dialog>

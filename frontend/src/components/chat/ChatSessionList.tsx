@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +15,7 @@ interface ChatSessionListProps {
   onSelectSession: (sessionId: string) => void;
   onNewSession: () => void;
   onDeleteSession?: (sessionId: string) => void;
+  layout?: 'responsive' | 'sidebar';
 }
 
 export function ChatSessionList({
@@ -24,23 +24,47 @@ export function ChatSessionList({
   onSelectSession,
   onNewSession,
   onDeleteSession,
+  layout = 'responsive',
 }: ChatSessionListProps) {
+  const isSidebar = layout === 'sidebar';
+
   return (
-    <div className="h-full bg-surface rounded-xl shadow-soft border border-border overflow-hidden flex flex-col">
-      <div className="p-4 border-b border-border bg-primary/5 flex-shrink-0">
+    <div className={cn(
+      'h-full bg-surface overflow-hidden flex',
+      isSidebar
+        ? 'flex-col rounded-none border-0 shadow-none'
+        : 'rounded-xl shadow-soft border border-border lg:min-h-0 lg:flex-col'
+    )}>
+      <div className={cn(
+        'flex-shrink-0 bg-surface p-3',
+        isSidebar
+          ? 'border-b border-border pr-12'
+          : 'flex items-center border-r border-border lg:block lg:border-r-0 lg:border-b lg:p-4'
+      )}>
         <Button
           onClick={onNewSession}
-          className="w-full shadow-soft transition-all duration-200 hover:scale-[1.02]"
+          className={cn(
+            'shadow-soft transition-all duration-200 hover:scale-[1.01]',
+            isSidebar ? 'h-10 w-full' : 'h-14 px-4 lg:h-10 lg:w-full'
+          )}
         >
           <Plus className="mr-2 h-4 w-4" />
           New Chat
         </Button>
       </div>
-      <ScrollArea className="flex-1 min-h-0 chat-sessions-scrollbar">
-        <div className="p-3 space-y-2 min-h-full">
+      <div className={cn(
+        'min-h-0 flex-1',
+        isSidebar
+          ? 'overflow-y-auto chat-sessions-scrollbar'
+          : 'chat-sessions-rail chat-sessions-scrollbar overflow-x-auto overflow-y-hidden lg:overflow-x-hidden lg:overflow-y-auto'
+      )}>
+        <div className={cn(
+          'p-3',
+          isSidebar ? 'space-y-2 min-h-full' : 'flex gap-2 lg:block lg:space-y-2 lg:min-h-full'
+        )}>
           {sessions.length === 0 ? (
-            <div className="text-center py-8 px-4">
-              <MessageSquare className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+            <div className="min-w-full text-center py-6 px-4 lg:py-8">
+              <MessageSquare className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3 lg:h-12 lg:w-12" />
               <p className="text-sm text-textSecondary font-medium">No conversations yet</p>
               <p className="text-xs text-muted-foreground mt-1">Start your first chat above</p>
             </div>
@@ -49,23 +73,24 @@ export function ChatSessionList({
               <div
                 key={session.id}
                 className={cn(
-                  'w-full text-left p-4 rounded-xl text-sm transition-all duration-300 group relative transform hover:scale-[1.01] cursor-pointer',
+                  'text-left p-3 rounded-lg text-sm transition-all duration-200 group relative cursor-pointer border',
+                  isSidebar ? 'w-full' : 'min-w-[220px] lg:min-w-0 lg:w-full',
                   activeSessionId === session.id
-                    ? 'bg-primary text-primary-foreground shadow-soft scale-[1.02]'
-                    : 'hover:bg-primary/5 text-textPrimary hover:shadow-md border border-transparent hover:border-border'
+                    ? 'bg-primary-light text-textPrimary border-primary/30 shadow-soft'
+                    : 'bg-surface hover:bg-muted/60 text-textPrimary border-border hover:border-primary/20'
                 )}
                 onClick={() => onSelectSession(session.id)}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <div className={cn(
-                    "p-2 rounded-lg transition-colors duration-300",
+                    "p-2 rounded-md transition-colors duration-200",
                     activeSessionId === session.id
-                      ? "bg-white/20"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-muted group-hover:bg-primary/10"
                   )}>
                     <MessageSquare className={cn(
                       "h-4 w-4 flex-shrink-0",
-                      activeSessionId === session.id ? "text-white" : "text-textSecondary group-hover:text-primary"
+                      activeSessionId === session.id ? "text-primary-foreground" : "text-textSecondary group-hover:text-primary"
                     )} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -74,7 +99,7 @@ export function ChatSessionList({
                     </span>
                     <span className={cn(
                       "text-xs block truncate",
-                      activeSessionId === session.id ? "text-white/80" : "text-muted-foreground"
+                      activeSessionId === session.id ? "text-primary" : "text-muted-foreground"
                     )}>
                       {new Date(session.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -84,9 +109,9 @@ export function ChatSessionList({
                       <DropdownMenuTrigger asChild>
                         <button
                           className={cn(
-                            "p-2 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100",
+                            "p-2 rounded-md transition-all duration-200 opacity-100 lg:opacity-0 lg:group-hover:opacity-100",
                             activeSessionId === session.id
-                              ? "hover:bg-white/20 text-white"
+                              ? "hover:bg-primary/10 text-primary"
                               : "hover:bg-danger/10 text-muted-foreground hover:text-danger"
                           )}
                           aria-label="Open chat actions"
@@ -114,7 +139,7 @@ export function ChatSessionList({
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatService } from '@/services/chat.service';
-import { toast } from 'sonner';
 
 export function useChatSessions() {
   const queryClient = useQueryClient();
@@ -19,10 +18,6 @@ export function useChatSessions() {
     mutationFn: () => chatService.createSession(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-      toast.success('New chat started');
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to create session');
     },
   });
 
@@ -30,10 +25,6 @@ export function useChatSessions() {
     mutationFn: (sessionId: string) => chatService.deleteSession(sessionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-      toast.success('Chat deleted');
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to delete chat');
     },
   });
 
@@ -67,9 +58,6 @@ export function useChatMessages(sessionId: string) {
     mutationFn: (content: string) => chatService.sendMessage(sessionId, content),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to send message');
     },
   });
 

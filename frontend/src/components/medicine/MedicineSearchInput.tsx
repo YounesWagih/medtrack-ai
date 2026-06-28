@@ -120,19 +120,19 @@ export function MedicineSearchInput({ placeholder = 'Search medicine...', onSele
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-background shadow-lg max-h-80 overflow-y-auto">
+        <div className="relative z-50 mt-2 w-full max-h-[min(56vh,28rem)] overflow-y-auto rounded-md border bg-background shadow-lg">
           {results.map((item) => (
             <button
               key={item.slug}
               onClick={() => handleSelect(item)}
-              className="w-full flex items-center gap-3 p-3 text-left hover:bg-accent focus:bg-accent focus:outline-none border-b last:border-b-0"
+              className="w-full flex items-center gap-3 border-b p-2.5 text-left last:border-b-0 hover:bg-accent focus:bg-accent focus:outline-none"
               type="button"
             >
               {item.image && (
                 <img
                   src={item.image}
                   alt={item.name_en || item.name_ar}
-                  className="h-10 w-10 object-contain rounded bg-white shrink-0"
+                  className="h-9 w-9 shrink-0 rounded bg-white object-contain"
                 />
               )}
               <div className="flex-1 min-w-0">
@@ -147,7 +147,7 @@ export function MedicineSearchInput({ placeholder = 'Search medicine...', onSele
       )}
 
       {isOpen && query.trim().length >= 2 && results.length === 0 && !isLoading && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-background shadow-lg p-4 text-center text-muted-foreground">
+        <div className="relative z-50 mt-2 w-full rounded-md border bg-background p-4 text-center text-muted-foreground shadow-lg">
           <p>No medicines found</p>
         </div>
       )}

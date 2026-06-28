@@ -1,16 +1,58 @@
 import { cn } from '@/lib/utils';
 import { Bot, User } from 'lucide-react';
-import type { ChatMessage as ChatMessageType, ChatResponseData, ChatRecommendationMedicine } from '@/types/api';
+import { Link } from 'react-router-dom';
+import type { ChatMessage as ChatMessageType, ChatResponseData, ChatRecommendationMedicine, Medicine } from '@/types/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ChatMessageProps {
   message: ChatMessageType;
   isStreaming?: boolean;
   responseData?: ChatResponseData;
+  medicines?: Medicine[];
 }
 
-export function ChatMessage({ message, isStreaming = false, responseData }: ChatMessageProps) {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function renderLinkedContent(content: string, medicines: Medicine[]) {
+  const linkableMedicines = medicines
+    .filter((medicine) => medicine.name.trim().length > 0)
+    .sort((a, b) => b.name.length - a.name.length);
+
+  if (linkableMedicines.length === 0) {
+    return content;
+  }
+
+  const medicinePattern = new RegExp(
+    `(${linkableMedicines.map((medicine) => escapeRegExp(medicine.name)).join('|')})`,
+    'gi'
+  );
+
+  return content.split(medicinePattern).map((part, index) => {
+    const matchedMedicine = linkableMedicines.find(
+      (medicine) => medicine.name.toLowerCase() === part.toLowerCase()
+    );
+
+    if (!matchedMedicine) {
+      return part;
+    }
+
+    return (
+      <Link
+        key={`${matchedMedicine.id}-${index}`}
+        to={`/medicines/view/${matchedMedicine.id}`}
+        className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+      >
+        {part}
+      </Link>
+    );
+  });
+}
+
+export function ChatMessage({ message, isStreaming = false, responseData, medicines = [] }: ChatMessageProps) {
   const isUser = message.role === 'USER';
+  const content = !isUser ? renderLinkedContent(message.content, medicines) : message.content;
 
   const renderRecommendations = (medicines: ChatRecommendationMedicine[]) => {
     return (
@@ -54,7 +96,7 @@ export function ChatMessage({ message, isStreaming = false, responseData }: Chat
             : 'bg-surface text-textPrimary border border-border mr-12 shadow-soft'
         )}>
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
-            {message.content}
+            {content}
             {isStreaming && (
               <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1 align-middle rounded-full" />
             )}

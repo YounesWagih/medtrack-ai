@@ -43,7 +43,7 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 // Medicine schema
 export const medicineSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  expiryDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+  expiryDate: z.string().min(1, 'Expiry date is required').refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid date',
   }),
   description: z.string().optional(),

@@ -177,6 +177,27 @@
     background: rgb(107 114 128);
   }
 
+  .chat-sessions-rail {
+    scrollbar-width: none;
+  }
+
+  .chat-sessions-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .chat-sessions-rail {
+      scrollbar-width: thin;
+      scrollbar-color: rgb(209 213 219) rgb(229 231 235);
+    }
+
+    .chat-sessions-rail::-webkit-scrollbar {
+      display: block;
+      width: 8px;
+      height: 8px;
+    }
+  }
+
 * {
   box-sizing: border-box;
 }
