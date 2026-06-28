@@ -1,7 +1,10 @@
 import { LoginInput, RegisterInput } from "../schemas/auth.schema.js";
 import * as userRepo from "../repositories/user.repository.js";
 import { APIError } from "../errors/APIError.js";
-import { EmailAlreadyExistsError } from "../errors/DomainError.js";
+import {
+    EmailAlreadyExistsError,
+    ResourceNotFoundError,
+} from "../errors/DomainError.js";
 import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
@@ -12,12 +15,21 @@ import { recordMetric, workflowOperationsTotal } from "../metrics/metrics.js";
 
 const authLogger = createAuthLogger();
 const TOKEN_EXPIRES_IN = "7d";
+const INVALID_CREDENTIALS_MESSAGE = "Invalid credentials";
 
 function generateToken(userId: string): string {
     return jwt.sign({ userId }, env.JWT_SECRET, {
         expiresIn: TOKEN_EXPIRES_IN,
     });
 }
+
+type UserWithPassword = Awaited<ReturnType<typeof userRepo.findByemailWithPassword>>;
+
+type LoginDependencies = {
+    findByemailWithPassword: (email: string) => Promise<UserWithPassword>;
+    verifyPassword: (hash: string, plain: string) => Promise<boolean>;
+    generateToken: (userId: string) => string;
+};
 
 export async function register(data: RegisterInput) {
     try {
@@ -58,14 +70,25 @@ export async function register(data: RegisterInput) {
     }
 }
 
-export async function login(data: LoginInput) {
+export async function loginWithDependencies(
+    data: LoginInput,
+    dependencies: LoginDependencies,
+) {
     try {
-        const user = await userRepo.findByemailWithPassword(data.email);
+        let user: UserWithPassword;
+        try {
+            user = await dependencies.findByemailWithPassword(data.email);
+        } catch (error) {
+            if (error instanceof ResourceNotFoundError) {
+                throw new APIError(INVALID_CREDENTIALS_MESSAGE, 401);
+            }
+            throw error;
+        }
 
-        const isPasswordValid = await argon2.verify(user.password, data.password);
-        if (!isPasswordValid) throw new APIError("Invalid credentials", 401);
+        const isPasswordValid = await dependencies.verifyPassword(user.password, data.password);
+        if (!isPasswordValid) throw new APIError(INVALID_CREDENTIALS_MESSAGE, 401);
 
-    const token = generateToken(user.id);
+    const token = dependencies.generateToken(user.id);
 
     const context = requestContextStore.getStore();
     authLogger.info(
@@ -93,4 +116,12 @@ export async function login(data: LoginInput) {
         recordMetric(() => workflowOperationsTotal.inc({ workflow: "auth", operation: "login", outcome: "error" }));
         throw error;
     }
+}
+
+export async function login(data: LoginInput) {
+    return loginWithDependencies(data, {
+        findByemailWithPassword: userRepo.findByemailWithPassword,
+        verifyPassword: argon2.verify,
+        generateToken,
+    });
 }
