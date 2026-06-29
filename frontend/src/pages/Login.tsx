@@ -74,7 +74,7 @@ export function LoginPage() {
             type="email"
             autoComplete="email"
             placeholder="name@example.com"
-            className="h-12"
+            className="h-12 border-primary/10 bg-primary-light/55 focus:border-primary/40 focus:bg-white"
             {...register('email')}
             aria-invalid={errors.email ? 'true' : 'false'}
           />
@@ -91,7 +91,7 @@ export function LoginPage() {
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder="Enter your password"
-              className="h-12 pr-12"
+              className="h-12 border-primary/10 bg-primary-light/55 pr-12 focus:border-primary/40 focus:bg-white"
               {...register('password')}
               aria-invalid={errors.password ? 'true' : 'false'}
             />

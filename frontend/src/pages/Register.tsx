@@ -73,7 +73,7 @@ export function RegisterPage() {
             type="text"
             autoComplete="name"
             placeholder="John Doe"
-            className="h-12"
+            className="h-12 border-primary/10 bg-primary-light/55 focus:border-primary/40 focus:bg-white"
             {...register('name')}
             aria-invalid={errors.name ? 'true' : 'false'}
           />
@@ -89,7 +89,7 @@ export function RegisterPage() {
             type="email"
             autoComplete="email"
             placeholder="name@example.com"
-            className="h-12"
+            className="h-12 border-primary/10 bg-primary-light/55 focus:border-primary/40 focus:bg-white"
             {...register('email')}
             aria-invalid={errors.email ? 'true' : 'false'}
           />
@@ -106,7 +106,7 @@ export function RegisterPage() {
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               placeholder="Create a password"
-              className="h-12 pr-12"
+              className="h-12 border-primary/10 bg-primary-light/55 pr-12 focus:border-primary/40 focus:bg-white"
               {...register('password')}
               aria-invalid={errors.password ? 'true' : 'false'}
             />
@@ -135,7 +135,7 @@ export function RegisterPage() {
               type={showConfirmPassword ? 'text' : 'password'}
               autoComplete="new-password"
               placeholder="Repeat your password"
-              className="h-12 pr-12"
+              className="h-12 border-primary/10 bg-primary-light/55 pr-12 focus:border-primary/40 focus:bg-white"
               {...register('confirmPassword')}
               aria-invalid={errors.confirmPassword ? 'true' : 'false'}
             />
