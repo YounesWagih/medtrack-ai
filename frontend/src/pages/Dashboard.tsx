@@ -37,15 +37,15 @@ export function DashboardPage() {
 
   return (
     <Layout>
-      <div className="space-y-8 animate-fade-in-up">
+      <div className="space-y-6 sm:space-y-8 animate-fade-in-up">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-2xl p-8 border border-primary/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-textPrimary mb-2">
-                Welcome back, {user?.name || 'User'}
+        <div className="rounded-[12px] border border-primary/10 bg-gradient-to-r from-primary/5 to-secondary/5 p-5 sm:p-8">
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="mb-2 text-2xl font-bold leading-tight text-textPrimary sm:text-4xl">
+                Welcome, {user?.name || 'User'}
               </h1>
-              <p className="text-lg text-textSecondary">
+              <p className="text-sm text-textSecondary sm:text-lg">
                 Keep track of your medications with MedTrack AI
               </p>
             </div>
@@ -58,7 +58,7 @@ export function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
           <StatsCard title="Active Medicines" value={activeCount} color="green" />
           <StatsCard title="Expiring Soon" value={expiringSoonCount} color="orange" />
           <StatsCard title="Expired" value={expiredCount} color="red" />
@@ -66,13 +66,13 @@ export function DashboardPage() {
 
         {/* Recent Medicines */}
         <Card className="shadow-soft border-border">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl font-semibold text-textPrimary flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-textPrimary sm:text-xl">
+              <Calendar className="h-5 w-5 shrink-0 text-primary" />
               Recent Medicines
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
             {isLoading ? (
               <div className="text-center py-12 text-textSecondary">
                 <div className="animate-pulse">Loading your medicines...</div>
@@ -88,32 +88,32 @@ export function DashboardPage() {
                 {recentMedicines.map((medicine, index) => (
                   <div
                     key={medicine.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border hover:shadow-md transition-all duration-200 hover:border-primary/20 animate-slide-up"
+                    className="flex min-w-0 flex-col gap-3 rounded-[12px] border border-border bg-surface p-3 transition-all duration-200 hover:border-primary/20 hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:p-4 animate-slide-up"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
                       {medicine.image ? (
                         <img
                           src={medicine.image}
                           alt={medicine.name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
+                          className="h-12 w-12 shrink-0 rounded-full border-2 border-primary/20 object-cover"
                         />
                       ) : (
-                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
                           <Pill className="w-6 h-6 text-primary" />
                         </div>
                       )}
-                      <div>
-                        <p className="font-semibold text-textPrimary text-lg">{medicine.name}</p>
-                        <p className="text-sm text-textSecondary flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-base font-semibold leading-snug text-textPrimary sm:text-lg">{medicine.name}</p>
+                        <p className="mt-1 flex min-w-0 items-center gap-1 text-sm text-textSecondary">
+                          <Calendar className="h-4 w-4 shrink-0" />
                           Expires: {format(new Date(medicine.expiryDate), 'MMM dd, yyyy')}
                         </p>
                       </div>
                     </div>
                     <Badge
                       variant={getStatusBadgeVariant(medicine.status)}
-                      className="px-3 py-1 text-sm font-medium"
+                      className="w-fit shrink-0 self-start px-3 py-1 text-xs font-medium sm:self-center sm:text-sm"
                     >
                       {medicine.status.replace('_', ' ')}
                     </Badge>

@@ -1,11 +1,16 @@
 import { z } from "zod";
 
+const EmailSchema = z.email("Invalid email format");
+const PasswordSchema = z.string().min(8, "Password must be at least 8 characters");
+
 export const LoginSchema = z.object({
-    email: z.email("Invalid email format"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    email: EmailSchema,
+    password: z.string().min(1, "Password is required"),
 });
 
-export const RegisterSchema = LoginSchema.extend({
+export const RegisterSchema = z.object({
+    email: EmailSchema,
+    password: PasswordSchema,
     name: z
         .string()
         .min(1, "Name is required")

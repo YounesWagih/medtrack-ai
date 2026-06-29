@@ -26,31 +26,36 @@ class ApiService {
       (error) => Promise.reject(error)
     );
 
-     // Response interceptor: handle common errors
-     this.client.interceptors.response.use(
-       (response: AxiosResponse<ApiResponse>) => response,
-       (error) => {
-         // Handle 401/403 - logout and redirect
-         if (error.response?.status === 401 || error.response?.status === 403) {
-           this.clearToken();
-           // Dispatch custom event to notify auth store
-           window.dispatchEvent(new CustomEvent('auth:logout'));
-           // Redirect will happen after the event is handled
-           setTimeout(() => window.location.href = '/login', 0);
-         }
+    // Response interceptor: handle common errors
+    this.client.interceptors.response.use(
+      (response: AxiosResponse<ApiResponse>) => response,
+      (error) => {
+        const status = error.response?.status;
+        const requestUrl = error.config?.url || '';
+        const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
 
-         // For any other error, if we have a response with data, use the message from the data
-         if (error.response && error.response.data) {
-           const data = error.response.data as { message?: string; error?: string };
-           const message = data.message || data.error;
-           // Create a new error with the message from the response
-           return Promise.reject(new Error(message || error.message));
-         }
+        // Expired/invalid tokens on protected routes should log out. Login/register
+        // failures should stay on the form so the user can see the inline error.
+        if ((status === 401 || status === 403) && !isAuthRequest) {
+          this.clearToken();
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+          if (window.location.pathname !== '/login') {
+            setTimeout(() => window.location.href = '/login', 0);
+          }
+        }
 
-         // Otherwise, reject with the original error
-         return Promise.reject(error);
-       }
-     );
+        // For any other error, if we have a response with data, use the message from the data
+        if (error.response && error.response.data) {
+          const data = error.response.data as { message?: string; error?: string };
+          const message = data.message || data.error;
+          // Create a new error with the message from the response
+          return Promise.reject(new Error(message || error.message));
+        }
+
+        // Otherwise, reject with the original error
+        return Promise.reject(error);
+      }
+    );
   }
 
   private getToken(): string | null {
